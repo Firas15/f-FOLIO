@@ -284,8 +284,9 @@
     mm.title = item.title;
     mm.i = -1;
     mm.el.classList.toggle("is-single", mm.images.length < 2);
+    mm.el.classList.toggle("is-photos", kind !== "project");
     mm.stage.innerHTML = mm.images.length
-      ? mm.images.map((src, k) => `<div class="mm__slide"><img src="${esc(src)}" alt="${esc(item.title)} — фото ${k + 1}" decoding="async"></div>`).join("")
+      ? mm.images.map((src, k) => `<div class="mm__slide" style="--src:url('${esc(src)}')"><img src="${esc(src)}" alt="${esc(item.title)} — фото ${k + 1}" decoding="async"></div>`).join("")
       : `<div class="mm__slide is-active mm__empty">Фото скоро появятся</div>`;
     mm.thumbs.innerHTML = mm.images.length > 1
       ? mm.images.map((src, k) => `<button class="mm__thumb" type="button" data-k="${k}" aria-label="Фото ${k + 1}"><img src="${esc(src)}" alt="" loading="lazy"></button>`).join("")

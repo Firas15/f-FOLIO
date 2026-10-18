@@ -755,10 +755,17 @@ html:not(.js) .preloader, .preloader.is-skip { display: none; }
 .mm__stage { position: relative; aspect-ratio: 16 / 10.5; overflow: hidden; touch-action: pan-y; max-height: calc(92vh - 96px); }
 .mm__slide { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; opacity: 0; visibility: hidden; transform: translateX(calc(var(--dir, 1) * 6%)) scale(.98); transition: opacity .5s var(--ease-smooth), transform .6s var(--ease-smooth), visibility .5s; }
 .mm__slide.is-active { opacity: 1; visibility: visible; transform: none; }
-.mm__slide img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.mm__slide img { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: contain; }
+/* поля вокруг фото заполняет размытая копия этого же фото */
+.mm__slide:not(.is-long)::before { content: ""; position: absolute; inset: -40px; background: var(--src) center / cover no-repeat; filter: blur(30px) brightness(.5) saturate(1.2); }
+/* у фото (достижения) кадр выше, чтобы вертикальные снимки были крупнее */
+@media (min-width: 901px) {
+  .mm.is-photos .mm__stage { aspect-ratio: 4 / 3.6; }
+  .mm.is-photos .mm__inner { grid-template-columns: 1.5fr 1fr; }
+}
 /* длинный скриншот сайта: на всю ширину, листается внутри */
 .mm__slide.is-long { display: block; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
-.mm__slide.is-long img { width: 100%; max-height: none; }
+.mm__slide.is-long img { position: static; width: 100%; height: auto; }
 .mm__empty { color: #8b8880; font-weight: 600; }
 .mm__nav { position: absolute; top: calc(50% - 40px); width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; color: #f4f1ea; background: rgba(12, 12, 13, .6); border: 1px solid rgba(255, 255, 255, .15); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: background-color var(--dur-fast), color var(--dur-fast), transform var(--dur) var(--ease-bounce); z-index: 2; }
 .mm__nav:hover { background: var(--accent); color: var(--accent-ink); transform: scale(1.08); }
