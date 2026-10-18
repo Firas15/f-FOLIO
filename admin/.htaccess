@@ -1,0 +1,7 @@
+Options -Indexes
+<Files "lib.php">
+  Require all denied
+</Files>
+<Files "set-password.php">
+  Require all denied
+</Files>

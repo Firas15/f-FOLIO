@@ -1,0 +1,13 @@
+# Служебные файлы админки: хеш пароля, попытки входа, резервные копии.
+# В GitHub их не отправляем.
+admin/storage/*
+!admin/storage/.htaccess
+!admin/storage/index.html
+
+# Настройки локального запуска
+.claude/
+
+# Мусор систем и редакторов
+.DS_Store
+Thumbs.db
+*.tmp
