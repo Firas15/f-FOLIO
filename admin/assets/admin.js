@@ -510,7 +510,7 @@
             ${field("Город", "profile.city")}
           </div>
           ${field("Статус (зелёная точка в шапке)", "profile.status", { max: 120 })}
-          ${field("Цитата на первом экране", "profile.quote", { rows: 3, max: 300 })}
+          ${field("Цитата (сейчас на сайте не показывается)", "profile.quote", { rows: 3, max: 300 })}
           ${field("Часовой пояс для часов в подвале", "profile.timezone", { list: "tzList", placeholder: "Europe/Moscow" })}
           <datalist id="tzList"><option value="Europe/Moscow"><option value="Europe/Samara"><option value="Asia/Yekaterinburg"><option value="Europe/Kaliningrad"></datalist>
         </section>

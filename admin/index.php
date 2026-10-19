@@ -13,21 +13,21 @@ $v = (string)@filemtime(__DIR__ . '/assets/admin.js') . (string)@filemtime(__DIR
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>Админка · Фирас</title>
+  <title>Админка · F/FOLIO</title>
   <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Martian+Mono:wght@500;600;700&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/admin.css?v=<?= htmlspecialchars($v) ?>">
   <script src="assets/admin.js?v=<?= htmlspecialchars($v) ?>" defer></script>
 </head>
 <body>
-  <div class="boot" id="boot"><span class="boot__logo">ФХ</span></div>
+  <div class="boot" id="boot"><span class="boot__logo">F/FOLIO</span></div>
 
   <!-- Вход -->
   <main class="login" id="loginView" hidden>
     <form class="login__card" id="loginForm" autocomplete="on">
-      <a class="logo" href="../" title="На сайт"><span class="logo__mark"><svg viewBox="0 0 32 32"><path d="M12 8h13l-4.5 6.5H7.5zM11.5 17.5H24.5L20 24H7z"/></svg></span><span>Фирас<b>.</b> <small>админка</small></span></a>
+      <a class="logo" href="../" title="На сайт"><span class="logo__mark"><svg viewBox="3.5 7.5 33 27"><path class="lm-body" d="M4 11.5A3.5 3.5 0 0 1 7.5 8h8.2l3.6 3.6h13.2A3.5 3.5 0 0 1 36 15.1v15.4a3.5 3.5 0 0 1-3.5 3.5h-25A3.5 3.5 0 0 1 4 30.5z"/><path class="lm-tab" d="M7.5 8h8.2l3.6 3.6H4A3.5 3.5 0 0 1 7.5 8z"/><path class="lm-f" d="M11 17h9.5v3.6h-5.4v2.6h4.6v3.6h-4.6V31H11z"/><path class="lm-f" d="M22.5 31h3.8l4.4-14h-3.8z"/></svg></span><span>F<b>/</b>FOLIO <small>админка</small></span></a>
       <h1 id="loginTitle">Вход</h1>
       <p class="muted" id="loginHint">Введите пароль администратора.</p>
       <input type="text" name="username" value="admin" autocomplete="username" hidden>
@@ -41,7 +41,7 @@ $v = (string)@filemtime(__DIR__ . '/assets/admin.js') . (string)@filemtime(__DIR
   <!-- Приложение -->
   <div class="shell" id="appView" hidden>
     <aside class="side">
-      <a class="logo" href="../" target="_blank" rel="noopener" title="Открыть сайт"><span class="logo__mark"><svg viewBox="0 0 32 32"><path d="M12 8h13l-4.5 6.5H7.5zM11.5 17.5H24.5L20 24H7z"/></svg></span><span>Фирас<b>.</b> <small>админка</small></span></a>
+      <a class="logo" href="../" target="_blank" rel="noopener" title="Открыть сайт"><span class="logo__mark"><svg viewBox="3.5 7.5 33 27"><path class="lm-body" d="M4 11.5A3.5 3.5 0 0 1 7.5 8h8.2l3.6 3.6h13.2A3.5 3.5 0 0 1 36 15.1v15.4a3.5 3.5 0 0 1-3.5 3.5h-25A3.5 3.5 0 0 1 4 30.5z"/><path class="lm-tab" d="M7.5 8h8.2l3.6 3.6H4A3.5 3.5 0 0 1 7.5 8z"/><path class="lm-f" d="M11 17h9.5v3.6h-5.4v2.6h4.6v3.6h-4.6V31H11z"/><path class="lm-f" d="M22.5 31h3.8l4.4-14h-3.8z"/></svg></span><span>F<b>/</b>FOLIO <small>админка</small></span></a>
       <nav class="side__nav" id="sideNav" aria-label="Разделы"></nav>
       <div class="side__foot">
         <button class="side__link" type="button" id="themeBtn"></button>

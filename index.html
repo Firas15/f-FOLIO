@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Фирас Хашаб — программист</title>
+  <title>F/FOLIO · Фирас Хашаб, программист</title>
   <meta name="description" content="Портфолио программиста Фираса Хашаба: веб-сайты, платформы и информационные системы. GameCode, Lib.Rusobr, Help-Lib.">
   <meta name="theme-color" content="#0c0c0d">
-  <meta property="og:title" content="Фирас Хашаб — программист">
+  <meta property="og:title" content="F/FOLIO · Фирас Хашаб, программист">
   <meta property="og:description" content="Сайты, платформы и информационные системы.">
   <meta property="og:image" content="assets/img/photos/firas.webp">
   <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
@@ -18,11 +18,11 @@
       if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
       document.documentElement.dataset.theme = t;
       document.documentElement.classList.add("js");
-    })();php
+    })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Unbounded:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Martian+Mono:wght@400;500;600;700;800&family=Onest:wght@400;500;600;700&family=VT323&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="data/portfolio.js" defer></script>
   <script src="assets/js/main.js" defer></script>
@@ -30,24 +30,46 @@
 <body>
   <a class="skip-link" href="#main">К содержимому</a>
 
-  <!-- Загрузка -->
-  <div class="preloader" id="preloader" aria-hidden="true">
-    <div class="preloader__inner">
-      <div class="preloader__logo"><span>Ф</span><i></i><span>Х</span></div>
-      <div class="preloader__log" id="preloaderLog"></div>
+  <!-- Вступление: включается старый телевизор -->
+  <div class="tv" id="tv" aria-hidden="true">
+    <div class="tv__screen">
+      <canvas class="tv__noise" width="220" height="124"></canvas>
+      <div class="tv__band"></div>
+      <span class="tv__osd tv__osd--tl">&#9654; PLAY</span>
+      <span class="tv__osd tv__osd--br" id="tvTime">SP 0:00:00</span>
+      <div class="tv__logo">F/FOLIO</div>
     </div>
-    <div class="preloader__count"><span id="preloaderCount">0</span><small>%</small></div>
-    <div class="preloader__bar"><i id="preloaderBar"></i></div>
+    <div class="tv__scan"></div>
+    <div class="tv__vignette"></div>
+    <span class="tv__hint">клик — пропустить</span>
   </div>
+
+  <!-- Вступление «запуск сайта»: тёмная надпись имени и терминал под ней -->
+  <div class="compile" id="compile" aria-hidden="true">
+    <div class="compile__bg"></div>
+    <div class="compile__glow"></div>
+    <div class="cterm" id="cTerm">
+      <div class="cterm__bar"><span class="browser__dots"><i></i><i></i><i></i></span><b>zsh — ~/f-folio</b></div>
+      <div class="cterm__out" id="cOut"></div>
+    </div>
+    <div class="cdone" id="cDone">
+      <svg class="cdone__check" viewBox="0 0 46 46"><circle cx="23" cy="23" r="20"/><path d="m14.5 23.5 6 6 11-12"/></svg>
+      <span><b>Задача выполнена</b><small id="cDoneTime">сайт запущен</small></span>
+    </div>
+    <span class="compile__hint">клик — пропустить</span>
+  </div>
+
+  <!-- Плёнка поверх всего сайта: зерно, развёртка, трекинг -->
+  <div class="film" id="film" aria-hidden="true"><i class="film__grain"></i><i class="film__scan"></i><i class="film__track"></i><i class="film__vignette"></i></div>
 
   <div class="cursor is-hidden" aria-hidden="true"><i class="cursor__blob"></i><span class="cursor__label"></span></div>
   <div class="scroll-progress" aria-hidden="true"><i id="scrollProgress"></i></div>
 
   <!-- Шапка -->
   <header class="nav" id="nav">
-    <a href="#top" class="logo" data-magnetic aria-label="Фирас Хашаб — наверх">
-      <span class="logo__mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M12 8h13l-4.5 6.5H7.5zM11.5 17.5H24.5L20 24H7z" fill="currentColor"/></svg></span>
-      <span class="logo__text">Фирас<b>.</b></span>
+    <a href="#top" class="logo" data-magnetic aria-label="F/FOLIO — наверх">
+      <span class="logo__mark" aria-hidden="true"><svg viewBox="3.5 7.5 33 27"><path class="lm-body" d="M4 11.5A3.5 3.5 0 0 1 7.5 8h8.2l3.6 3.6h13.2A3.5 3.5 0 0 1 36 15.1v15.4a3.5 3.5 0 0 1-3.5 3.5h-25A3.5 3.5 0 0 1 4 30.5z"/><path class="lm-tab" d="M7.5 8h8.2l3.6 3.6H4A3.5 3.5 0 0 1 7.5 8z"/><path class="lm-f" d="M11 17h9.5v3.6h-5.4v2.6h4.6v3.6h-4.6V31H11z"/><path class="lm-f" d="M22.5 31h3.8l4.4-14h-3.8z"/></svg></span>
+      <span class="logo__text">F<b>/</b>FOLIO</span>
     </a>
     <nav class="nav__links" aria-label="Разделы">
       <a href="#top" data-spy="top">Главная</a>
@@ -89,16 +111,16 @@
   <main id="main">
     <!-- Первый экран -->
     <section class="hero" id="top">
-      <div class="hero__bg" aria-hidden="true"><div class="hero__grid"></div><div class="hero__glow"></div></div>
+      <div class="hero__bg" aria-hidden="true"><pre class="hero__src"></pre><pre class="hero__src hero__src--lit"></pre><canvas class="hero__liquid" id="heroLiquid"></canvas><div class="hero__vignette"></div></div>
+      <div class="hero__osd" aria-hidden="true"><i class="hero__rec"></i>PLAY <span id="heroTime">0:00:00</span></div>
 
       <div class="hero__head">
-        <p class="hero__badge"><span class="pulse"></span><span id="heroBadge">Программист · Нижний Новгород</span></p>
         <h1 class="hero__title">
           <span class="sr-only">Привет, я Фирас Хашаб</span>
           <span class="hero__hello" aria-hidden="true">Привет, я</span>
           <span class="hero__name" aria-hidden="true" id="heroName">Фирас Хашаб</span>
         </h1>
-        <p class="hero__sub">Создаю сайты, платформы и информационные системы</p>
+        <p class="hero__sub"><span class="sr-only">Создаю сайты, платформы и информационные системы</span><span aria-hidden="true">Создаю <span class="hero__type"><b id="heroType">сайты</b><i class="hero__type-caret"></i></span></span></p>
 
 
       </div>
@@ -114,7 +136,6 @@
         </aside>
 
         <div class="hero__photo" id="heroPhoto">
-          <div class="hero__code-bg" aria-hidden="true">&lt;/&gt;</div>
           <div class="hero__arch-line" aria-hidden="true"></div>
           <div class="hero__arch">
             <img src="assets/img/photos/firas.webp" alt="Фирас Хашаб" width="910" height="1280" fetchpriority="high" id="heroImg">
@@ -126,19 +147,17 @@
           </svg>
           <span class="stamp__core" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
         </a>
-          <span class="float-chip float-chip--a"><i class="dot"></i><span>Работаю в <b>Е-Паблиш</b></span></span>
-          <span class="float-chip float-chip--b"><svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg>ННГАСУ · ИСТ</span>
-          <span class="float-chip float-chip--c"><svg viewBox="0 0 24 24"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>Full-cycle web</span>
         </div>
 
-        <aside class="hero__right">
-          <svg class="hero__quote-mark" viewBox="0 0 32 24" aria-hidden="true"><path d="M0 24V14C0 6 4 1.5 12 0l1.5 3C9 4.5 7 7.5 7 11h5v13zm18 0V14c0-8 4-12.5 12-14l1.5 3C27 4.5 25 7.5 25 11h5v13z" fill="currentColor"/></svg>
-          <p class="hero__quote" id="heroQuote"></p>
-          <div class="chip-cloud">
-            <span class="chip">Сайты</span><span class="chip chip--accent">Платформы</span>
-            <span class="chip chip--accent"><i class="chip__icon">✦</i>Информационные системы</span>
-            <span class="chip">UI / UX</span><span class="chip chip--accent">Базы данных</span>
-          </div>
+        <aside class="hero__right now-card" id="nowCard" aria-label="Чем я занят сейчас">
+          <p class="now-card__head"><i class="pulse"></i>Сейчас</p>
+          <ul class="now-card__list">
+            <li><span class="now-card__ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span><div><small id="nowWorkLabel">Работаю</small><b id="nowWork">—</b></div></li>
+            <li><span class="now-card__ic"><svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg></span><div><small>Учусь</small><b id="nowStudy">—</b></div></li>
+            <li><span class="now-card__ic"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span><div><small>Статус</small><b id="nowStatus">—</b></div></li>
+          </ul>
+          <p class="now-card__time"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span id="nowTime">—</span></p>
+          <a class="btn btn--accent btn--sm now-card__cta" id="nowCta" href="#contact" data-magnetic>Обсудить проект <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a>
         </aside>
       </div>
 
@@ -167,11 +186,11 @@
         <div class="laptop-scene">
           <div class="laptop" id="laptop">
             <div class="lid">
-              <div class="lid__back"><span class="lid__logo">ФХ</span></div>
+              <div class="lid__back"><span class="lid__logo">F/FOLIO</span></div>
               <div class="lid__front">
                 <span class="lid__cam" aria-hidden="true"></span>
                 <div class="screen" id="screen">
-                  <div class="screen__boot" aria-hidden="true"><span class="screen__boot-logo">ФХ</span><i class="screen__spinner"></i></div>
+                  <div class="screen__boot" aria-hidden="true"><span class="screen__boot-logo">F/FOLIO</span><i class="screen__spinner"></i></div>
                   <div class="browser">
                     <div class="browser__bar">
                       <span class="browser__dots"><i></i><i></i><i></i></span>
@@ -181,7 +200,7 @@
                   </div>
                   <div class="screen__glare" aria-hidden="true"></div>
                 </div>
-                <span class="lid__brand" aria-hidden="true">FirasBook Pro</span>
+                <span class="lid__brand" aria-hidden="true">F/FOLIO</span>
               </div>
             </div>
             <div class="base" aria-hidden="true">
@@ -301,11 +320,42 @@
   </main>
 
   <footer class="footer">
-    <div class="footer__giant" aria-hidden="true" id="footerGiant">ФИРАС ХАШАБ</div>
-    <div class="container footer__row">
-      <span>© <span id="year">2026</span> Фирас Хашаб</span>
+    <div class="footer__giant" aria-hidden="true" id="footerGiant">F/FOLIO</div>
+    <div class="container footer__grid">
+      <div class="footer__brand">
+        <a href="#top" class="logo" aria-label="F/FOLIO — наверх">
+          <span class="logo__mark" aria-hidden="true"><svg viewBox="3.5 7.5 33 27"><path class="lm-body" d="M4 11.5A3.5 3.5 0 0 1 7.5 8h8.2l3.6 3.6h13.2A3.5 3.5 0 0 1 36 15.1v15.4a3.5 3.5 0 0 1-3.5 3.5h-25A3.5 3.5 0 0 1 4 30.5z"/><path class="lm-tab" d="M7.5 8h8.2l3.6 3.6H4A3.5 3.5 0 0 1 7.5 8z"/><path class="lm-f" d="M11 17h9.5v3.6h-5.4v2.6h4.6v3.6h-4.6V31H11z"/><path class="lm-f" d="M22.5 31h3.8l4.4-14h-3.8z"/></svg></span>
+          <span class="logo__text">F<b>/</b>FOLIO</span>
+        </a>
+        <p class="footer__about" id="footerAbout"></p>
+        <p class="footer__status"><i class="pulse"></i><span id="footerStatus">Открыт к новым проектам</span></p>
+        <a class="btn btn--accent btn--sm" id="footerCta" href="#contact"><span class="footer__cta-label">Написать мне</span> <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a>
+      </div>
+      <nav class="footer__col" aria-label="Разделы сайта">
+        <h3>Навигация</h3>
+        <ul>
+          <li><a href="#top">Главная</a></li>
+          <li><a href="#showcase">Топ работ</a></li>
+          <li><a href="#about">Обо мне</a></li>
+          <li><a href="#works">Проекты</a></li>
+          <li><a href="#achievements">Достижения</a></li>
+          <li><a href="#contact">Контакты</a></li>
+        </ul>
+      </nav>
+      <div class="footer__col">
+        <h3>Проекты</h3>
+        <ul id="footerProjects"></ul>
+      </div>
+      <div class="footer__col">
+        <h3>Связаться</h3>
+        <ul id="footerContacts"></ul>
+      </div>
+    </div>
+    <div class="container footer__bottom">
+      <span>© <span id="year">2026</span> F/FOLIO. Все права защищены.</span>
       <span class="footer__clock"><i class="pulse"></i><span id="clock">—</span></span>
-      <a href="#top" class="footer__top" data-magnetic>Наверх <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></a>
+      <button class="footer__term" type="button" data-open-term>Открыть терминал <kbd>`</kbd></button>
+      <a href="#top" class="footer__top">Наверх <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></a>
     </div>
   </footer>
 
@@ -327,7 +377,7 @@
   <!-- Терминал-пасхалка -->
   <div class="terminal" id="terminal" hidden>
     <div class="terminal__win" role="dialog" aria-label="Терминал" aria-modal="true">
-      <div class="terminal__bar"><span class="browser__dots"><i></i><i></i><i></i></span><span>firas@portfolio: ~</span><button class="terminal__close" type="button" aria-label="Закрыть терминал">esc</button></div>
+      <div class="terminal__bar"><span class="browser__dots"><i></i><i></i><i></i></span><span>guest@f-folio: ~</span><button class="terminal__close" type="button" aria-label="Закрыть терминал">esc</button></div>
       <div class="terminal__out" id="termOut"></div>
       <form class="terminal__line" id="termForm" autocomplete="off"><span class="terminal__prompt">➜ ~</span><input id="termInput" spellcheck="false" aria-label="Команда"></form>
     </div>

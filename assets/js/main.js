@@ -1,5 +1,5 @@
 /* =========================================================
-   Портфолио Фираса Хашаба — логика и анимации.
+   F/FOLIO — логика и анимации.
    Весь контент берётся из data/portfolio.js (window.PORTFOLIO).
    ========================================================= */
 (() => {
@@ -106,8 +106,6 @@
 
   /* ---------- Рендер из данных ---------- */
   function renderProfile() {
-    if (P.role || P.city) $("#heroBadge").textContent = [P.role, P.city].filter(Boolean).join(" · ");
-    $("#heroQuote").textContent = P.quote || "";
     if (P.photo) $("#heroImg").src = P.photo;
 
     const socials = contacts
@@ -739,21 +737,28 @@
 
   // <dialog> открывается в «верхнем слое» и перекрывает любой z-index.
   // Курсор тоже живёт в верхнем слое (popover) и поднимается над каждым открытым окном.
+  // Плёнка лежит там же, под курсором: зерно должно быть и поверх окон.
   const canPopover = typeof HTMLElement.prototype.showPopover === "function";
+  const film = $("#film");
   function raiseCursor() {
+    const layers = [film, useCursor ? cursor : null].filter(Boolean);
     if (canPopover) {
-      if (cursor.matches(":popover-open")) cursor.hidePopover();
-      cursor.showPopover();
+      layers.forEach((el) => {
+        if (!el.hasAttribute("popover")) el.setAttribute("popover", "manual");
+        if (el.matches(":popover-open")) el.hidePopover();
+        el.showPopover();
+      });
     } else {
-      ($("dialog[open]") || document.body).append(cursor);
+      const host = $("dialog[open]") || document.body;
+      layers.forEach((el) => host.append(el));
     }
   }
+  raiseCursor();
+  $$("dialog").forEach((dlg) => new MutationObserver(() => raiseCursor()).observe(dlg, { attributes: true, attributeFilter: ["open"] }));
+  try { if (localStorage.getItem("vhs") === "off") film.classList.add("is-off"); } catch {}
 
   if (useCursor) {
     root.classList.add("has-cursor");
-    if (canPopover) cursor.setAttribute("popover", "manual");
-    raiseCursor();
-    $$("dialog").forEach((dlg) => new MutationObserver(() => raiseCursor()).observe(dlg, { attributes: true, attributeFilter: ["open"] }));
 
     addEventListener("pointermove", (e) => {
       cur.x = e.clientX;
@@ -889,8 +894,6 @@
       s.setProperty("--py", (-ny * 10).toFixed(1) + "px");
       s.setProperty("--lx", (nx * 22).toFixed(1) + "px");
       s.setProperty("--ly", (ny * 16).toFixed(1) + "px");
-      hero.style.setProperty("--gx", (nx + 0.5) * 100 + "%");
-      hero.style.setProperty("--gy", (ny + 0.5) * 100 + "%");
     });
     hero.addEventListener("pointerleave", () => {
       ["--rx", "--ry", "--px", "--py", "--lx", "--ly"].forEach((v) => heroPhoto.style.removeProperty(v));
@@ -1039,6 +1042,8 @@
           "<span class='t-acc'>contact</span>       как связаться",
           "<span class='t-acc'>ls</span> / <span class='t-acc'>cd</span> &lt;раздел&gt;  перейти к разделу",
           "<span class='t-acc'>theme</span>         сменить тему",
+          "<span class='t-acc'>vhs</span> [on|off]    плёнка и зерно поверх сайта",
+          "<span class='t-acc'>intro</span> vhs|code  выбрать вступление",
           "<span class='t-acc'>clear</span>         очистить экран",
           "<span class='t-acc'>exit</span>          закрыть терминал",
           "<span class='t-cmd'>…и ещё одна секретная команда с sudo</span>",
@@ -1071,6 +1076,18 @@
     },
     date: () => print(new Date().toLocaleString("ru-RU")),
     whoami: () => print("гость, которому очень нравится этот сайт 🙂"),
+    intro: (v) => {
+      if (v !== "vhs" && v !== "code") return print(`сейчас: <span class='t-acc'>${INTRO}</span>. Варианты: intro vhs · intro code`);
+      try { localStorage.setItem("intro", v); sessionStorage.removeItem("fx-seen"); } catch {}
+      print(`<span class='t-ok'>✓</span> вступление «${v}», перезагружаю…`);
+      setTimeout(() => location.reload(), 700);
+    },
+    vhs: (mode) => {
+      const off = mode ? mode === "off" : !film.classList.contains("is-off");
+      film.classList.toggle("is-off", off);
+      try { localStorage.setItem("vhs", off ? "off" : "on"); } catch {}
+      print(`<span class='t-ok'>✓</span> плёнка ${off ? "выключена" : "включена"}`);
+    },
     clear: () => (termOut.innerHTML = ""),
     exit: () => closeTerm(),
     sudo: (...args) => {
@@ -1103,7 +1120,7 @@
     root.style.overflow = "hidden";
     if (!termOpened) {
       termOpened = true;
-      print("Добро пожаловать в терминал Фираса 👋\nНапиши <span class='t-acc'>help</span>, чтобы увидеть команды.");
+      print("Добро пожаловать в терминал F/FOLIO 👋\nНапиши <span class='t-acc'>help</span>, чтобы увидеть команды.");
     }
     setTimeout(() => termInput.focus(), 30);
   }
@@ -1112,6 +1129,7 @@
     root.style.overflow = "";
   }
   $("#termBtn").addEventListener("click", openTerm);
+  $$("[data-open-term]").forEach((b) => b.addEventListener("click", openTerm));
   $(".terminal__close").addEventListener("click", closeTerm);
   term.addEventListener("click", (e) => e.target === term && closeTerm());
   $("#termForm").addEventListener("submit", (e) => {
@@ -1161,6 +1179,33 @@
     }
   }
 
+  /* ---------- Подвал ---------- */
+  function renderFooter() {
+    const about = $("#footerAbout");
+    if (about) about.textContent = `${[P.role, P.city].filter(Boolean).join(" · ")}. Делаю сайты, веб-платформы и информационные системы — от идеи до продакшена.`;
+    const st = $("#footerStatus");
+    if (st && P.status) st.textContent = P.status;
+    const tg = contacts.find((c) => c.type === "telegram") || contacts[0];
+    const cta = $("#footerCta");
+    if (cta && tg) {
+      cta.href = tg.url;
+      if (isExternal(tg.url)) Object.assign(cta, { target: "_blank", rel: "noopener" });
+      $(".footer__cta-label", cta).textContent = "Написать в " + tg.label;
+    }
+    $("#footerProjects").innerHTML =
+      projects
+        .slice(0, 6)
+        .map((p) =>
+          p.url
+            ? `<li><a href="${esc(p.url)}" target="_blank" rel="noopener"><span>${esc(p.title)}<small>${esc(p.domain || p.category)}</small></span>${ICONS.arrowUR}</a></li>`
+            : `<li><button type="button" data-project="${esc(p.id)}"><span>${esc(p.title)}<small>${esc(p.category)}</small></span></button></li>`
+        )
+        .join("") + `<li><a href="#works" class="footer__more">Все работы →</a></li>`;
+    $("#footerContacts").innerHTML = contacts
+      .map((c) => `<li><a href="${esc(c.url)}" ${isExternal(c.url) ? 'target="_blank" rel="noopener"' : ""}><i class="footer__ic">${iconFor(c.type)}</i><span>${esc(c.label)}<small>${esc(c.value)}</small></span></a></li>`)
+      .join("");
+  }
+
   /* ---------- Часы в подвале ---------- */
   function startClock() {
     const fmt = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: P.timezone || "Europe/Moscow" });
@@ -1179,38 +1224,571 @@
     if (w) g.style.fontSize = Math.min(220, (100 * (g.clientWidth * 0.94)) / w) + "px";
   }
 
-  /* ---------- Загрузка ---------- */
-  function runPreloader(done) {
-    const pre = $("#preloader");
+  /* ---------- Какое вступление показывать ----------
+     ?intro=code или ?intro=vhs в адресе — переключить (запоминается),
+     в терминале — команда «intro code» / «intro vhs». */
+  const INTRO_DEFAULT = "code";
+  const introParam = new URLSearchParams(location.search).get("intro");
+  const INTRO = (() => {
+    if (introParam === "vhs" || introParam === "code") {
+      try { localStorage.setItem("intro", introParam); } catch {}
+      return introParam;
+    }
+    try {
+      const v = localStorage.getItem("intro");
+      if (v === "vhs" || v === "code") return v;
+    } catch {}
+    return INTRO_DEFAULT;
+  })();
+  root.dataset.intro = INTRO;
+
+  // полное вступление — первый раз за визит (или когда вариант выбран ссылкой)
+  function introIsFull() {
     let seen = false;
     try { seen = sessionStorage.getItem("fx-seen") === "1"; } catch {}
-    if (seen || reduced()) {
-      pre.classList.add("is-skip");
+    try { sessionStorage.setItem("fx-seen", "1"); } catch {}
+    return !seen || !!introParam;
+  }
+
+  function runIntro(done) {
+    if (INTRO === "code") {
+      $("#tv")?.remove();
+      return runCodeIntro(done);
+    }
+    $("#compile")?.remove();
+    return runVhsIntro(done);
+  }
+
+  /* ---------- Вступление «запуск сайта» ----------
+     Имя уже стоит на своём месте, но тёмное, как выключенная вывеска.
+     Под ним терминал: npm install → npm run build → npm start.
+     На «включаю свет…» надпись загорается с одним щелчком, терминал
+     сворачивается в «Задача выполнена ✓», и проявляется остальной сайт.
+     Повторно за визит — короткая версия. Клик или клавиша — пропустить. */
+  function runCodeIntro(done) {
+    const box = $("#compile");
+    $("#film")?.classList.add("is-off");
+    const name = $("#heroName");
+    if (!box) return done();
+    if (reduced() || scrollY > innerHeight * 0.5 || !name) {
+      box.remove();
       return done();
     }
-    try { sessionStorage.setItem("fx-seen", "1"); } catch {}
+    const full = introIsFull();
+    root.classList.add("is-compiling");
     root.style.overflow = "hidden";
-    const log = $("#preloaderLog");
-    const count = $("#preloaderCount");
-    const bar = $("#preloaderBar");
-    const lines = ["<b>✓</b> загружаю проекты", "<b>✓</b> полирую анимации", "<b>✓</b> открываю ноутбук"];
-    lines.forEach((l, i) => setTimeout(() => log.insertAdjacentHTML("beforeend", `<div>${l}</div>`), 250 + i * 380));
-    const dur = 1600;
+
+    const term = $("#cTerm");
+    const out = $("#cOut");
+    const glow = $(".compile__glow", box);
+    const pill = $("#cDone");
+    const timers = [];
+    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+    let lit = false;
+    let revealed = false;
     const t0 = performance.now();
-    const frame = (now) => {
-      const p = clamp((now - t0) / dur);
-      const e = easeInOut(p);
-      count.textContent = Math.round(e * 100);
-      bar.style.transform = `scaleX(${e})`;
-      if (p < 1) return requestAnimationFrame(frame);
-      setTimeout(() => {
-        pre.classList.add("is-done");
-        root.style.overflow = "";
-        done();
-        setTimeout(() => pre.remove(), 1100);
-      }, 180);
+
+    // терминал — под надписью, свечение — за ней
+    const place = () => {
+      const r = name.getBoundingClientRect();
+      box.style.setProperty("--term-top", Math.round(r.bottom + Math.min(56, innerHeight * 0.06)) + "px");
+      Object.assign(glow.style, { left: r.left + r.width / 2 + "px", top: r.top + r.height / 2 + "px", width: r.width * 1.5 + "px", height: r.height * 3.2 + "px" });
     };
-    requestAnimationFrame(frame);
+    place();
+    document.fonts && document.fonts.ready.then(place);
+    addEventListener("resize", place);
+
+    const prompt = `<span class="t-ok">➜</span> <span class="t-acc">f-folio</span> <span class="t-dim">git:(</span><span class="t-red">main</span><span class="t-dim">)</span> `;
+    const line = (html) => {
+      const d = document.createElement("div");
+      d.innerHTML = html;
+      out.append(d);
+      out.scrollTop = out.scrollHeight;
+      return d;
+    };
+    const caret = Object.assign(document.createElement("span"), { className: "caret" });
+    const typeCmd = (text, then) => {
+      const d = line(prompt + '<span class="t-cmd"></span>');
+      const cmd = $(".t-cmd", d);
+      d.append(caret);
+      let n = 0;
+      const tick = () => {
+        cmd.textContent = text.slice(0, ++n);
+        if (n < text.length) return at(full ? 26 : 14, tick);
+        caret.remove();
+        at(full ? 110 : 50, then);
+      };
+      at(full ? 90 : 30, tick);
+    };
+    const plural = (n, one, few, many) => {
+      const a = n % 10;
+      const b = n % 100;
+      return `${n} ${a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many}`;
+    };
+    const projNames = projects.slice(0, 3).map((p) => p.title).join(", ") + (projects.length > 3 ? "…" : "");
+    const progress = (d, dur, then) => {
+      const bar = $(".c-bar i", d);
+      const pct = $(".c-pct", d);
+      const s = performance.now();
+      const id = setInterval(() => {
+        const p = clamp((performance.now() - s) / dur);
+        const e = easeInOut(p);
+        bar.style.transform = `scaleX(${e})`;
+        pct.textContent = Math.round(e * 100) + "%";
+        if (p >= 1) {
+          clearInterval(id);
+          then();
+        }
+      }, 16);
+      timers.push(id);
+    };
+
+    const steps = full
+      ? [
+          (next) =>
+            typeCmd("npm install", () => {
+              line(`<span class="t-dim">добавлено:</span> ${plural(projects.length, "проект", "проекта", "проектов")} · ${plural(achievements.length, "достижение", "достижения", "достижений")} · ${plural(contacts.length, "контакт", "контакта", "контактов")}`);
+              at(110, () => {
+                line(`<span class="t-ok">✓</span> зависимости на месте`);
+                at(160, next);
+              });
+            }),
+          (next) =>
+            typeCmd("npm run build", () => {
+              const d = line(`<span class="t-dim">▸</span> собираю страницу <span class="c-bar"><i></i></span> <span class="c-pct">0%</span>`);
+              progress(d, 420, () => {
+                line(`<span class="t-ok">✓</span> собрано за 0.42 с`);
+                at(170, next);
+              });
+            }),
+          (next) =>
+            typeCmd("npm start", () => {
+              line(`<span class="t-dim">▸</span> поднимаю сервер…`);
+              at(170, () => {
+                line(`<span class="t-dim">▸</span> подключаю проекты: ${esc(projNames)}`);
+                at(200, () => {
+                  line(`<span class="t-dim">▸</span> включаю свет…`);
+                  at(260, () =>
+                    lightUp(() => {
+                      line(`<span class="t-ok">✓ сайт запущен</span> <span class="t-dim">за ${((performance.now() - t0) / 1000).toFixed(1)} с</span>`);
+                      at(380, next);
+                    })
+                  );
+                });
+              });
+            }),
+        ]
+      : [
+          (next) =>
+            typeCmd("npm start", () => {
+              line(`<span class="t-dim">▸</span> включаю свет…`);
+              at(200, () =>
+                lightUp(() => {
+                  line(`<span class="t-ok">✓ сайт запущен</span>`);
+                  at(280, next);
+                })
+              );
+            }),
+        ];
+    const run = (i) => (i < steps.length ? steps[i](() => run(i + 1)) : complete());
+
+    // надпись загорается: вспышка → гаснет → горит
+    const on = () => {
+      name.classList.remove("is-flash");
+      glow.classList.remove("is-flash");
+      root.classList.add("is-lit");
+      name.classList.add("is-glow");
+      glow.classList.add("is-on");
+    };
+    function lightUp(then) {
+      if (lit) return then && then();
+      lit = true;
+      name.classList.add("is-flash");
+      glow.classList.add("is-flash");
+      at(80, () => {
+        name.classList.remove("is-flash");
+        glow.classList.remove("is-flash");
+      });
+      at(240, on);
+      at(480, () => then && then());
+    }
+
+    // терминал сворачивается в «Задача выполнена»
+    function complete() {
+      if (revealed) return;
+      term.classList.add("is-out");
+      pill.classList.add("is-on");
+      $("#cDoneTime").textContent = `сайт запущен за ${((performance.now() - t0) / 1000).toFixed(1)} с`;
+      at(full ? 950 : 650, reveal);
+    }
+
+    function reveal() {
+      if (revealed) return;
+      revealed = true;
+      timers.forEach((id) => (clearTimeout(id), clearInterval(id)));
+      caret.remove();
+      lit = true;
+      on();
+      pill.classList.add("is-leave");
+      term.classList.add("is-out");
+      box.classList.add("is-reveal");
+      root.classList.remove("is-compiling");
+      root.style.overflow = "";
+      removeEventListener("resize", place);
+      done();
+      pixelBuild();
+      setTimeout(() => {
+        box.remove();
+        root.classList.remove("is-lit");
+      }, 1500);
+      setTimeout(() => name.classList.remove("is-glow"), 2400);
+    }
+
+    // фото в арке проявляется из крупных пикселей
+    function pixelBuild() {
+      const arch = $(".hero__arch");
+      const img = $("#heroImg");
+      if (!arch || !img || !img.naturalWidth) return;
+      const w = arch.clientWidth;
+      const h = arch.clientHeight;
+      const cv = document.createElement("canvas");
+      cv.className = "hero__pixels";
+      cv.width = w;
+      cv.height = h;
+      arch.append(cv);
+      const ctx = cv.getContext("2d");
+      const tmp = document.createElement("canvas");
+      const tctx = tmp.getContext("2d");
+      const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+      const sw = w / scale;
+      const sh = h / scale;
+      const sx = (img.naturalWidth - sw) * 0.5;
+      const sy = (img.naturalHeight - sh) * 0.38;
+      [4, 7, 12, 20, 34, 56, 100].forEach((n, k) =>
+        setTimeout(() => {
+          tmp.width = n;
+          tmp.height = Math.max(1, Math.round((n * h) / w));
+          tctx.drawImage(img, sx, sy, sw, sh, 0, 0, tmp.width, tmp.height);
+          ctx.imageSmoothingEnabled = false;
+          ctx.clearRect(0, 0, w, h);
+          ctx.drawImage(tmp, 0, 0, w, h);
+        }, 200 + k * 90)
+      );
+      setTimeout(() => {
+        cv.classList.add("is-out");
+        setTimeout(() => cv.remove(), 450);
+      }, 200 + 7 * 90 + 60);
+    }
+
+    box.addEventListener("pointerdown", () => reveal());
+    addEventListener("keydown", function onKey() {
+      removeEventListener("keydown", onKey);
+      reveal();
+    });
+    at(full ? 340 : 160, () => run(0));
+  }
+
+  // карточка «Сейчас» на первом экране
+  function renderNow() {
+    const card = $("#nowCard");
+    if (!card) return;
+    const w = P.work || {};
+    const s = P.study || {};
+    $("#nowWorkLabel").textContent = w.city ? `Работаю · ${w.city}` : "Работаю";
+    $("#nowWork").innerHTML = w.url ? `<a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.company)}</a>` : esc(w.company || "—");
+    $("#nowStudy").textContent = [s.place, s.short || s.program].filter(Boolean).join(" · ") || "—";
+    $("#nowStatus").textContent = P.status || "Открыт к новым проектам";
+    const tg = contacts.find((c) => c.type === "telegram") || contacts[0];
+    const cta = $("#nowCta");
+    if (tg) {
+      cta.href = tg.url;
+      if (isExternal(tg.url)) Object.assign(cta, { target: "_blank", rel: "noopener" });
+    }
+    const fmt = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: P.timezone || "Europe/Moscow" });
+    const tick = () => ($("#nowTime").textContent = `${P.city || "Местное время"}, ${fmt.format(new Date())}`);
+    tick();
+    setInterval(tick, 15000);
+  }
+
+  // первый экран в режиме «код»: моно-приветствие, каретка после имени,
+  // а фон — настоящий код этого сайта, который подсвечивается вокруг курсора
+  function initCodeHero() {
+    if (INTRO !== "code") return;
+    $(".hero__hello").textContent = "// привет, я";
+    $$(".hero__name .word").at(-1)?.insertAdjacentHTML("beforeend", '<i class="hero__caret" aria-hidden="true"></i>');
+    const src = [runCodeIntro, initHeroAtmosphere, updateLaptop, renderShowcase, openMedia, updateCursor, typeCode, setTheme]
+      .map((f) => f.toString())
+      .join("\n\n");
+    let text = src;
+    while (text.length < 16000) text += "\n\n" + src;
+    $$(".hero__src").forEach((p) => (p.textContent = text));
+  }
+
+  // подзаголовок: «Создаю …» с печатающимся словом
+  function typedSubtitle() {
+    const el = $("#heroType");
+    if (!el) return;
+    const words = P.typing && P.typing.length ? P.typing : ["сайты", "веб-платформы", "информационные системы", "интерфейсы", "чат-ботов"];
+    el.textContent = words[0];
+    if (reduced()) return;
+    let wi = 0;
+    let ci = words[0].length;
+    let del = true;
+    const step = () => {
+      const w = words[wi];
+      if (del) {
+        if (ci > 0) {
+          el.textContent = w.slice(0, --ci);
+          return setTimeout(step, 30);
+        }
+        del = false;
+        wi = (wi + 1) % words.length;
+        return setTimeout(step, 260);
+      }
+      const nw = words[wi];
+      if (ci < nw.length) {
+        el.textContent = nw.slice(0, ++ci);
+        return setTimeout(step, 60 + Math.random() * 60);
+      }
+      del = true;
+      setTimeout(step, 2200);
+    };
+    setTimeout(step, 4600);
+  }
+
+  /* ---------- Вступление: включается VHS-телевизор ----------
+     Первый визит: белая точка → линия → кадр с помехами и «▶ PLAY» → сигнал ловится,
+     сайт проступает сквозь развёртку и на миг расходится по цветам.
+     Повторно за визит — короткая версия. Клик или клавиша — пропустить. */
+  function runVhsIntro(done) {
+    const tv = $("#tv");
+    if (!tv) return done();
+    if (reduced()) {
+      tv.remove();
+      return done();
+    }
+    const full = introIsFull();
+    const T = full ? { open: 120, on: 720, clear: 1150, reveal: 2050, end: 2700 } : { open: 40, on: 380, clear: 0, reveal: 560, end: 1050 };
+
+    root.style.overflow = "hidden";
+    const screen = $(".tv__screen", tv);
+    const canvas = $(".tv__noise", tv);
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(canvas.width, canvas.height);
+    const buf = new Uint32Array(img.data.buffer);
+    let alive = true;
+    // помехи: серый шум с холодным оттенком, как на старой кассете
+    const noise = () => {
+      if (!alive) return;
+      for (let i = 0; i < buf.length; i++) {
+        const v = (Math.random() * 235) | 0;
+        buf[i] = (255 << 24) | (Math.min(255, v + 28) << 16) | (v << 8) | v;
+      }
+      ctx.putImageData(img, 0, 0);
+      requestAnimationFrame(noise);
+    };
+    const t0 = performance.now();
+    const clock = setInterval(() => {
+      const s = Math.floor((performance.now() - t0) / 1000) + 1;
+      $("#tvTime").textContent = `SP 0:00:${String(s).padStart(2, "0")}`;
+    }, 250);
+
+    const timers = [];
+    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+    let finished = false;
+
+    at(T.open, () => {
+      screen.animate(
+        [
+          { transform: "scale(.015, .003)", filter: "brightness(3)" },
+          { transform: "scale(1, .004)", filter: "brightness(2.5)", offset: 0.45 },
+          { transform: "scale(1, 1)", filter: "brightness(1)" },
+        ],
+        { duration: full ? 620 : 320, easing: "cubic-bezier(.7,0,.2,1)", fill: "forwards" }
+      );
+    });
+    at(T.on, () => {
+      screen.classList.add("is-on");
+      noise();
+    });
+    if (full) at(T.clear, () => screen.classList.add("is-clearing"));
+    at(T.reveal, reveal);
+    at(T.end, finish);
+
+    function reveal() {
+      if (tv.classList.contains("is-reveal")) return;
+      tv.classList.add("is-reveal");
+      root.classList.add("is-tuning");
+      done();
+      // кадр с помехами мигает и гаснет — под ним уже сайт
+      screen.animate([{ opacity: 1 }, { opacity: 0.25 }, { opacity: 0.8 }, { opacity: 0.1 }, { opacity: 0.45 }, { opacity: 0 }], { duration: 480, easing: "steps(6)", fill: "forwards" });
+      setTimeout(() => root.classList.remove("is-tuning"), 900);
+    }
+    function finish() {
+      if (finished) return;
+      finished = true;
+      timers.forEach(clearTimeout);
+      reveal();
+      tv.classList.add("is-done");
+      root.style.overflow = "";
+      setTimeout(() => {
+        alive = false;
+        clearInterval(clock);
+        tv.remove();
+      }, 400);
+    }
+    const skip = () => {
+      timers.forEach(clearTimeout);
+      reveal();
+      setTimeout(finish, 350);
+    };
+    tv.addEventListener("pointerdown", skip, { once: true });
+    addEventListener("keydown", function onKey() {
+      removeEventListener("keydown", onKey);
+      if (!finished) skip();
+    });
+  }
+
+  /* ---------- Первый экран: жидкий свет, зерно, таймкод, глитч ---------- */
+  function initHeroAtmosphere() {
+    initCodeHero();
+    typedSubtitle();
+    const cv = $("#heroLiquid");
+    const grain = $(".film__grain");
+
+    // зерно для всего сайта: одна шумовая текстура, дальше её только двигает CSS
+    const g = document.createElement("canvas");
+    g.width = g.height = 180;
+    const gc = g.getContext("2d");
+    const gi = gc.createImageData(180, 180);
+    for (let i = 0; i < gi.data.length; i += 4) {
+      const v = (Math.random() * 255) | 0;
+      gi.data[i] = gi.data[i + 1] = gi.data[i + 2] = v;
+      gi.data[i + 3] = (Math.random() * 120) | 0;
+    }
+    gc.putImageData(gi, 0, 0);
+    grain.style.backgroundImage = `url(${g.toDataURL()})`;
+
+    // свет: несколько тёплых пятен медленно плывут, одно тянется за курсором.
+    // Рисуем на крошечном canvas — при растяжении он сам становится мягким.
+    const ctx = cv.getContext("2d");
+    const SCALE = 0.12;
+    let w = 0, h = 0;
+    const resize = () => {
+      w = cv.width = Math.max(40, Math.round(hero.clientWidth * SCALE));
+      h = cv.height = Math.max(40, Math.round(hero.clientHeight * SCALE));
+    };
+    resize();
+    addEventListener("resize", resize);
+    // x, y — опорная точка (доли экрана), r — радиус, fx/fy — скорость дрейфа
+    const blobs = [
+      { x: 0.5, y: 0.74, r: 0.34, c: [255, 140, 20], a: 0.5, fx: 0.07, fy: 0.05, ph: 0 },
+      { x: 0.3, y: 0.62, r: 0.26, c: [255, 84, 30], a: 0.34, fx: 0.05, fy: 0.08, ph: 2.1 },
+      { x: 0.72, y: 0.6, r: 0.25, c: [255, 196, 80], a: 0.28, fx: 0.06, fy: 0.04, ph: 4.2 },
+      { x: 0.58, y: 0.95, r: 0.3, c: [230, 70, 40], a: 0.3, fx: 0.04, fy: 0.06, ph: 1.3 },
+    ];
+    const m = { x: 0.5, y: 0.7, tx: 0.5, ty: 0.7 };
+    const lit = INTRO === "code" ? $(".hero__src--lit") : null;
+    const L = { x: null, y: null, ptr: false };
+    hero.addEventListener("pointermove", (e) => {
+      const r = hero.getBoundingClientRect();
+      m.tx = (e.clientX - r.left) / r.width;
+      m.ty = (e.clientY - r.top) / r.height;
+      L.ptr = e.pointerType === "mouse";
+    });
+    hero.addEventListener("pointerleave", () => (L.ptr = false));
+    let visible = true;
+    new IntersectionObserver((en) => (visible = en[0].isIntersecting)).observe(hero);
+
+    let last = 0;
+    const draw = (now) => {
+      requestAnimationFrame(draw);
+      if (!visible || document.hidden || now - last < 33) return; // ~30 кадров хватает
+      last = now;
+      const t = now / 1000;
+      const dark = root.dataset.theme !== "light";
+      const k = dark ? 1 : 0.6;
+      m.x = lerp(m.x, m.tx, 0.03);
+      m.y = lerp(m.y, m.ty, 0.03);
+      if (lit) {
+        // «фонарик»: за мышью, а без мыши — медленно бродит сам
+        const W = hero.clientWidth;
+        const H = hero.clientHeight;
+        const tx = L.ptr ? m.tx * W : W * (0.5 + 0.34 * Math.sin(t * 0.33));
+        const ty = L.ptr ? m.ty * H : H * (0.48 + 0.24 * Math.sin(t * 0.51));
+        L.x = L.x === null ? tx : lerp(L.x, tx, 0.22);
+        L.y = L.y === null ? ty : lerp(L.y, ty, 0.22);
+        lit.style.setProperty("--lx-src", L.x.toFixed(0) + "px");
+        lit.style.setProperty("--ly-src", L.y.toFixed(0) + "px");
+      }
+      ctx.clearRect(0, 0, w, h);
+      ctx.globalCompositeOperation = dark ? "lighter" : "source-over";
+      const big = Math.max(w, h);
+      const spot = (x, y, r, [cr, cg, cb], a) => {
+        const gr = ctx.createRadialGradient(x, y, 0, x, y, r);
+        gr.addColorStop(0, `rgba(${cr},${cg},${cb},${a})`);
+        gr.addColorStop(0.55, `rgba(${cr},${cg},${cb},${a * 0.35})`);
+        gr.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+        ctx.fillStyle = gr;
+        ctx.fillRect(0, 0, w, h);
+      };
+      blobs.forEach((b) => {
+        const x = (b.x + Math.sin(t * b.fx * 6.28 + b.ph) * 0.14 + (m.x - 0.5) * 0.08) * w;
+        const y = (b.y + Math.cos(t * b.fy * 6.28 + b.ph) * 0.1 + (m.y - 0.5) * 0.06) * h;
+        const r = b.r * big * (1 + Math.sin(t * 0.4 + b.ph) * 0.12);
+        spot(x, y, r, b.c, b.a * k);
+      });
+      spot(m.x * w, m.y * h, 0.17 * big, [255, 150, 40], 0.26 * k);
+    };
+    if (reduced()) {
+      visible = true;
+      draw(1000);
+    } else requestAnimationFrame(draw);
+
+    // таймкод кассеты: сколько вы уже на сайте
+    const osd = $("#heroTime");
+    const start = Date.now();
+    setInterval(() => {
+      const s = Math.floor((Date.now() - start) / 1000);
+      osd.textContent = `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+    }, 1000);
+
+    // глитч имени: при наведении и изредка сам по себе
+    const name = $("#heroName");
+    const scramble = () => {
+      if (reduced() || name.dataset.busy) return;
+      name.dataset.busy = "1";
+      const GL = "<>/{}[]=;:01#*";
+      const cs = $$(".char", name);
+      let left = cs.length;
+      cs.forEach((c, i) => {
+        const real = c.textContent;
+        c.style.width = c.getBoundingClientRect().width + "px";
+        c.style.textAlign = "center";
+        let n = 0;
+        const max = 3 + (i % 3) + ((Math.random() * 4) | 0);
+        const id = setInterval(() => {
+          if (++n <= max) return (c.textContent = GL[(Math.random() * GL.length) | 0]);
+          clearInterval(id);
+          c.textContent = real;
+          c.style.width = c.style.textAlign = "";
+          if (--left === 0) delete name.dataset.busy;
+        }, 55);
+      });
+    };
+    if (INTRO === "code") {
+      const label = [...$(".hero__osd").childNodes].find((n) => n.nodeType === 3 && n.textContent.includes("PLAY"));
+      if (label) label.textContent = "BUILD OK ";
+    }
+    const glitch = () => {
+      if (INTRO === "code") return scramble();
+      if (reduced() || name.classList.contains("is-glitch")) return;
+      name.classList.add("is-glitch");
+      name.addEventListener("animationend", () => name.classList.remove("is-glitch"), { once: true });
+    };
+    $(".hero__title").addEventListener("pointerenter", glitch);
+    const schedule = () => setTimeout(() => { if (visible && !document.hidden) glitch(); schedule(); }, 7000 + Math.random() * 6000);
+    schedule();
   }
 
   /* ---------- Главный цикл ---------- */
@@ -1236,6 +1814,8 @@
     renderProfile();
     renderTicker();
     renderContacts();
+    renderFooter();
+    renderNow();
     renderWorkFilters();
     renderWorks();
     renderAchTabs();
@@ -1275,7 +1855,8 @@
       if (sc.on && sc.active >= 0) startSlideScroll(sc.active);
     });
 
-    runPreloader(() => {
+    initHeroAtmosphere();
+    runIntro(() => {
       root.classList.add("is-ready");
       movePill(activeLink);
     });
