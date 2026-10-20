@@ -516,8 +516,10 @@
         </section>
         <section class="card">
           <h2>Фото</h2>
-          ${singlePhoto("Фото в арке на первом экране", "profile.photo", "profile")}
-          <p class="hint">Лучше вертикальное фото: лицо примерно на трети высоты сверху.</p>
+          ${singlePhoto("Фото на бейдже", "profile.photo", "profile")}
+          <p class="hint">Фото на бейдже в центре первого экрана — кадрируется в квадрат, лицо лучше по центру.</p>
+          ${singlePhoto("QR-код на обороте бейджа", "profile.qr", "profile")}
+          <p class="hint">Например, QR на ваш Telegram. Клик по нему на сайте ведёт на первый контакт из «Контактов» с типом Telegram.</p>
         </section>
         <section class="card">
           <h2>Учёба</h2>

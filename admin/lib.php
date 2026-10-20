@@ -224,6 +224,7 @@ function sanitize_data(mixed $in): array
         'city' => clean_str($p['city'] ?? '', 80),
         'timezone' => $tz,
         'photo' => clean_img($p['photo'] ?? ''),
+        'qr' => clean_img($p['qr'] ?? ''),
         'status' => clean_str($p['status'] ?? '', 120),
         'quote' => clean_str($p['quote'] ?? '', 300),
         'study' => [

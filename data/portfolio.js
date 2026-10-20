@@ -7,6 +7,7 @@ window.PORTFOLIO = {
         "city": "Нижний Новгород",
         "timezone": "Europe/Moscow",
         "photo": "assets/img/photos/firas.webp",
+        "qr": "assets/img/qr-telegram.webp",
         "status": "Открыт к новым проектам",
         "quote": "Пишу код, за который не стыдно, и делаю интерфейсы, к которым хочется возвращаться.",
         "study": {

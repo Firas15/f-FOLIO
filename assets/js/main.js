@@ -882,7 +882,7 @@
   /* ---------- Параллакс первого экрана ---------- */
   const hero = $(".hero");
   const heroPhoto = $("#heroPhoto");
-  if (finePointer && !reduced()) {
+  if (heroPhoto && finePointer && !reduced()) {
     hero.addEventListener("pointermove", (e) => {
       const r = hero.getBoundingClientRect();
       const nx = (e.clientX - r.left) / r.width - 0.5;
@@ -1291,7 +1291,8 @@
     // терминал — под надписью, свечение — за ней
     const place = () => {
       const r = name.getBoundingClientRect();
-      box.style.setProperty("--term-top", Math.round(r.bottom + Math.min(56, innerHeight * 0.06)) + "px");
+      const th = term.offsetHeight || 270;
+      box.style.setProperty("--term-top", Math.round(Math.min(r.bottom + Math.min(56, innerHeight * 0.06), innerHeight - th - 40)) + "px");
       Object.assign(glow.style, { left: r.left + r.width / 2 + "px", top: r.top + r.height / 2 + "px", width: r.width * 1.5 + "px", height: r.height * 3.2 + "px" });
     };
     place();
@@ -1444,9 +1445,9 @@
       setTimeout(() => name.classList.remove("is-glow"), 2400);
     }
 
-    // фото в арке проявляется из крупных пикселей
+    // фото на бейдже проявляется из крупных пикселей
     function pixelBuild() {
-      const arch = $(".hero__arch");
+      const arch = $(".idcard__photo") || $(".hero__arch");
       const img = $("#heroImg");
       if (!arch || !img || !img.naturalWidth) return;
       const w = arch.clientWidth;
@@ -1463,7 +1464,7 @@
       const sw = w / scale;
       const sh = h / scale;
       const sx = (img.naturalWidth - sw) * 0.5;
-      const sy = (img.naturalHeight - sh) * 0.38;
+      const sy = (img.naturalHeight - sh) * 0.32;
       [4, 7, 12, 20, 34, 56, 100].forEach((n, k) =>
         setTimeout(() => {
           tmp.width = n;
@@ -1488,33 +1489,108 @@
     at(full ? 340 : 160, () => run(0));
   }
 
-  // карточка «Сейчас» на первом экране
-  function renderNow() {
-    const card = $("#nowCard");
-    if (!card) return;
+  /* ---------- Бейдж на первом экране ----------
+     Висит на ленте и чуть покачивается. Можно потянуть мышью или пальцем —
+     раскачается и вернётся на пружине. Клик/тап/Enter — перевернуть:
+     на обороте QR-код на Telegram и «чем я занят сейчас». */
+  function initIdCard() {
+    const card = $("#idcard");
+    const flip = $("#idFlip");
+    if (!card || !flip) return;
+
     const w = P.work || {};
     const s = P.study || {};
+    $("#idName").textContent = [P.firstName, P.lastName].filter(Boolean).join(" ") || "Фирас Хашаб";
+    $("#idRole").textContent = [P.role, w.company].filter(Boolean).join(" · ");
     $("#nowWorkLabel").textContent = w.city ? `Работаю · ${w.city}` : "Работаю";
     $("#nowWork").innerHTML = w.url ? `<a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.company)}</a>` : esc(w.company || "—");
     $("#nowStudy").textContent = [s.place, s.short || s.program].filter(Boolean).join(" · ") || "—";
     $("#nowStatus").textContent = P.status || "Открыт к новым проектам";
+    if (P.qr) $("#idQr").src = P.qr;
     const tg = contacts.find((c) => c.type === "telegram") || contacts[0];
-    const cta = $("#nowCta");
+    const qrLink = $("#idQrLink");
     if (tg) {
-      cta.href = tg.url;
-      if (isExternal(tg.url)) Object.assign(cta, { target: "_blank", rel: "noopener" });
+      qrLink.href = tg.url;
+      $("#idQr").alt = `QR-код: ${tg.label} ${tg.value}`;
+      if (isExternal(tg.url)) Object.assign(qrLink, { target: "_blank", rel: "noopener" });
     }
     const fmt = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: P.timezone || "Europe/Moscow" });
-    const tick = () => ($("#nowTime").textContent = `${P.city || "Местное время"}, ${fmt.format(new Date())}`);
-    tick();
-    setInterval(tick, 15000);
+    const clock = () => ($("#nowTime").textContent = `${P.city || "Местное время"}, ${fmt.format(new Date())}`);
+    clock();
+    setInterval(clock, 15000);
+
+    // переворот
+    const setFlip = (on) => {
+      card.classList.toggle("is-flipped", on);
+      flip.setAttribute("aria-pressed", on);
+      st.v += on ? -1.6 : 1.6; // переворот слегка раскачивает бейдж
+    };
+    flip.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setFlip(!card.classList.contains("is-flipped"));
+      }
+    });
+
+    // маятник: угол a, скорость v; без касания тянется к лёгкому покачиванию
+    const st = { a: 0, v: 0, drag: false, x0: 0, a0: 0, moved: false, id: null };
+    let visible = true;
+    new IntersectionObserver((en) => (visible = en[0].isIntersecting)).observe(card);
+    const tick = (now) => {
+      requestAnimationFrame(tick);
+      if (!visible || st.drag) return;
+      const idle = reduced() ? 0 : Math.sin(now / 1500) * 1.4;
+      st.v += (idle - st.a) * 0.018;
+      st.v *= 0.965;
+      st.a += st.v;
+      card.style.setProperty("--swing", st.a.toFixed(2) + "deg");
+    };
+    requestAnimationFrame(tick);
+
+    flip.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest("a")) return;
+      st.drag = true;
+      st.moved = false;
+      st.x0 = e.clientX;
+      st.a0 = st.a;
+      st.id = e.pointerId;
+      flip.setPointerCapture(e.pointerId);
+    });
+    flip.addEventListener("pointermove", (e) => {
+      if (!st.drag || e.pointerId !== st.id) {
+        // быстрое движение мыши над бейджем слегка его толкает
+        if (!st.drag && e.pointerType === "mouse") st.v += clamp(e.movementX * 0.015, -0.6, 0.6);
+        return;
+      }
+      const dx = e.clientX - st.x0;
+      if (Math.abs(dx) > 6 && !st.moved) {
+        st.moved = true;
+        card.classList.add("is-dragging");
+      }
+      if (!st.moved) return;
+      const a = clamp(st.a0 + dx * 0.11, -38, 38);
+      st.v = a - st.a;
+      st.a = a;
+      card.style.setProperty("--swing", st.a.toFixed(2) + "deg");
+    });
+    const release = (e) => {
+      if (!st.drag || (e && e.pointerId !== st.id)) return;
+      st.drag = false;
+      card.classList.remove("is-dragging");
+      if (!st.moved) setFlip(!card.classList.contains("is-flipped"));
+    };
+    flip.addEventListener("pointerup", release);
+    flip.addEventListener("pointercancel", () => {
+      st.drag = false;
+      card.classList.remove("is-dragging");
+    });
   }
 
   // первый экран в режиме «код»: моно-приветствие, каретка после имени,
   // а фон — настоящий код этого сайта, который подсвечивается вокруг курсора
   function initCodeHero() {
     if (INTRO !== "code") return;
-    $(".hero__hello").textContent = "// привет, я";
+    $(".hero__hello").textContent = "// привет, я программист";
     $$(".hero__name .word").at(-1)?.insertAdjacentHTML("beforeend", '<i class="hero__caret" aria-hidden="true"></i>');
     const src = [runCodeIntro, initHeroAtmosphere, updateLaptop, renderShowcase, openMedia, updateCursor, typeCode, setTheme]
       .map((f) => f.toString())
@@ -1748,7 +1824,7 @@
     // таймкод кассеты: сколько вы уже на сайте
     const osd = $("#heroTime");
     const start = Date.now();
-    setInterval(() => {
+    if (osd) setInterval(() => {
       const s = Math.floor((Date.now() - start) / 1000);
       osd.textContent = `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
     }, 1000);
@@ -1776,7 +1852,7 @@
         }, 55);
       });
     };
-    if (INTRO === "code") {
+    if (INTRO === "code" && $(".hero__osd")) {
       const label = [...$(".hero__osd").childNodes].find((n) => n.nodeType === 3 && n.textContent.includes("PLAY"));
       if (label) label.textContent = "BUILD OK ";
     }
@@ -1815,7 +1891,7 @@
     renderTicker();
     renderContacts();
     renderFooter();
-    renderNow();
+    initIdCard();
     renderWorkFilters();
     renderWorks();
     renderAchTabs();

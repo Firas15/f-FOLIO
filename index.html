@@ -22,7 +22,7 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Martian+Mono:wght@400;500;600;700;800&family=Onest:wght@400;500;600;700&family=VT323&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Martian+Mono:wdth,wght@75..112.5,400..800&family=Onest:wght@400;500;600;700&family=VT323&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="data/portfolio.js" defer></script>
   <script src="assets/js/main.js" defer></script>
@@ -110,60 +110,52 @@
 
   <main id="main">
     <!-- Первый экран -->
-    <section class="hero" id="top">
+    <section class="hero hero--badge" id="top">
       <div class="hero__bg" aria-hidden="true"><pre class="hero__src"></pre><pre class="hero__src hero__src--lit"></pre><canvas class="hero__liquid" id="heroLiquid"></canvas><div class="hero__vignette"></div></div>
-      <div class="hero__osd" aria-hidden="true"><i class="hero__rec"></i>PLAY <span id="heroTime">0:00:00</span></div>
 
-      <div class="hero__head">
-        <h1 class="hero__title">
-          <span class="sr-only">Привет, я Фирас Хашаб</span>
-          <span class="hero__hello" aria-hidden="true">Привет, я</span>
-          <span class="hero__name" aria-hidden="true" id="heroName">Фирас Хашаб</span>
-        </h1>
-        <p class="hero__sub"><span class="sr-only">Создаю сайты, платформы и информационные системы</span><span aria-hidden="true">Создаю <span class="hero__type"><b id="heroType">сайты</b><i class="hero__type-caret"></i></span></span></p>
+      <h1 class="hero__title">
+        <span class="sr-only">Привет, я Фирас Хашаб — программист</span>
+        <span class="hero__name" aria-hidden="true" id="heroName">Фирас Хашаб</span>
+      </h1>
 
-
-      </div>
-
-      <div class="hero__stage">
-        <aside class="hero__left">
-          <p class="hero__label">Я в сети</p>
-          <div class="socials" id="heroSocials"></div>
-          <div class="hero__stats">
-            <div class="stat"><b data-count="projects">0</b><span>сайта<br>в продакшене</span></div>
-            <div class="stat"><b data-count="achievements">0</b><span>дипломы<br>и события</span></div>
+      <!-- Бейдж: висит на ленте, раскачивается, переворачивается -->
+      <div class="idcard" id="idcard">
+        <div class="idcard__strap" aria-hidden="true"><span>F/FOLIO · ОТКРЫТ К ПРОЕКТАМ · F/FOLIO · ОТКРЫТ К ПРОЕКТАМ · </span></div>
+        <div class="idcard__clip" aria-hidden="true"></div>
+        <div class="idcard__flip" id="idFlip" role="button" tabindex="0" aria-pressed="false" aria-label="Бейдж. Нажмите, чтобы перевернуть и увидеть контакты" data-cursor="Перевернуть">
+          <div class="idcard__face idcard__front">
+            <div class="idcard__hole"></div>
+            <div class="idcard__top"><span class="idcard__brand">F<b>/</b>FOLIO</span><span class="idcard__pill">DEV</span></div>
+            <div class="idcard__photo"><img src="assets/img/photos/firas.webp" alt="Фирас Хашаб" width="910" height="1280" fetchpriority="high" id="heroImg" draggable="false"></div>
+            <p class="idcard__name" id="idName">Фирас Хашаб</p>
+            <p class="idcard__role" id="idRole">Программист</p>
+            <div class="idcard__foot"><span>ID 0001<br>ACCESS: ALL</span><i class="idcard__bars"></i></div>
           </div>
-        </aside>
-
-        <div class="hero__photo" id="heroPhoto">
-          <div class="hero__arch-line" aria-hidden="true"></div>
-          <div class="hero__arch">
-            <img src="assets/img/photos/firas.webp" alt="Фирас Хашаб" width="910" height="1280" fetchpriority="high" id="heroImg">
+          <div class="idcard__face idcard__back">
+            <div class="idcard__hole"></div>
+            <div class="idcard__top"><span class="idcard__brand">F<b>/</b>FOLIO</span><span class="idcard__pill">CONTACT</span></div>
+            <a class="idcard__qr" id="idQrLink" href="#contact" aria-label="Открыть Telegram"><img src="assets/img/qr-telegram.webp" alt="QR-код: Telegram" id="idQr" draggable="false"></a>
+            <ul class="idcard__now">
+              <li><small id="nowWorkLabel">Работаю</small><b id="nowWork">—</b></li>
+              <li><small>Учусь</small><b id="nowStudy">—</b></li>
+              <li><small>Статус</small><b id="nowStatus">—</b></li>
+            </ul>
+            <p class="idcard__time"><i class="pulse"></i><span id="nowTime">—</span></p>
           </div>
-          <a class="stamp" href="#contact" data-magnetic aria-label="Написать мне">
-          <svg viewBox="0 0 120 120" class="stamp__text" aria-hidden="true">
-            <defs><path id="stampCircle" d="M60 60m-46 0a46 46 0 1 1 92 0a46 46 0 1 1-92 0"/></defs>
-            <text><textPath href="#stampCircle" textLength="286">НАПИШИ МНЕ • ОТКРЫТ К ПРОЕКТАМ •</textPath></text>
-          </svg>
-          <span class="stamp__core" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
-        </a>
         </div>
-
-        <aside class="hero__right now-card" id="nowCard" aria-label="Чем я занят сейчас">
-          <p class="now-card__head"><i class="pulse"></i>Сейчас</p>
-          <ul class="now-card__list">
-            <li><span class="now-card__ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span><div><small id="nowWorkLabel">Работаю</small><b id="nowWork">—</b></div></li>
-            <li><span class="now-card__ic"><svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg></span><div><small>Учусь</small><b id="nowStudy">—</b></div></li>
-            <li><span class="now-card__ic"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span><div><small>Статус</small><b id="nowStatus">—</b></div></li>
-          </ul>
-          <p class="now-card__time"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span id="nowTime">—</span></p>
-          <a class="btn btn--accent btn--sm now-card__cta" id="nowCta" href="#contact" data-magnetic>Обсудить проект <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a>
-        </aside>
+        <p class="idcard__hint" aria-hidden="true"><span class="idcard__hint-fine">потяни или нажми</span><span class="idcard__hint-touch">нажми, чтобы перевернуть</span></p>
       </div>
 
-      <div class="hero__cta">
-        <a class="btn btn--accent" href="#showcase" data-magnetic>Портфолио <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-        <a class="btn btn--ghost" href="#contact" data-magnetic>Написать мне</a>
+      <div class="hero__bottom">
+        <div class="hero__intro">
+          <p class="hero__hello">Привет, я программист</p>
+          <p class="hero__sub"><span class="sr-only">Создаю сайты, платформы и информационные системы</span><span aria-hidden="true">Создаю <span class="hero__type"><b id="heroType">сайты</b><i class="hero__type-caret"></i></span></span></p>
+          <div class="socials" id="heroSocials"></div>
+        </div>
+        <div class="hero__cta">
+          <a class="btn btn--accent" href="#showcase" data-magnetic>Портфолио <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+          <a class="btn btn--ghost" href="#contact" data-magnetic>Написать мне</a>
+        </div>
       </div>
     </section>
 
