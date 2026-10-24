@@ -173,6 +173,24 @@ kbd { font: 600 .7rem var(--font-mono); padding: 2px 6px; border-radius: 6px; ba
 .contact-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .row--contact .row__actions { align-self: center; }
 
+/* цифры первого экрана: строки редактора и превью «как на сайте» */
+.row--fact { grid-template-columns: auto 1fr auto; align-items: end; }
+.row--fact .row__grip, .row--fact .row__actions { align-self: center; }
+.fact-fields { display: grid; grid-template-columns: minmax(170px, 1.1fr) minmax(90px, .6fr) minmax(160px, 1.4fr); gap: 10px; }
+.fact-fields input:disabled { color: var(--accent-text); font-family: var(--font-mono); opacity: 1; cursor: default; }
+.facts-rows { margin-bottom: 12px; }
+/* типы достижений: под списком достижений, строки «вкладка / на карточке» */
+.ach-types { margin-top: 28px; }
+.ach-types .rows { margin: 4px 0 12px; }
+.row--type { grid-template-columns: auto 1fr auto auto; align-items: end; }
+.row--type .row__grip, .row--type .row__badges, .row--type .row__actions { align-self: center; }
+.type-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.facts-preview { display: flex; flex-wrap: wrap; row-gap: 14px; margin: 14px 0 16px; padding: 16px 0; border-block: 1px dashed var(--line-2); }
+.fp { display: grid; gap: 6px; align-content: start; padding: 0 20px; border-left: 1px solid var(--line-2); }
+.fp:first-child { padding-left: 0; border-left: 0; }
+.fp b { font: 700 1.7rem/1 var(--font-display); color: var(--accent-text); }
+.fp span { max-width: 24ch; font: .74rem/1.35 var(--font-mono); color: var(--muted); text-wrap: balance; }
+
 /* ---------- Поля ---------- */
 .field { display: grid; gap: 6px; font-size: .84rem; font-weight: 600; color: var(--muted); min-width: 0; }
 .field > span { display: flex; justify-content: space-between; gap: 8px; }
@@ -183,6 +201,8 @@ input:not([type="checkbox"]):not([type="file"]), select, textarea {
   font-size: .95rem; font-weight: 500; transition: border-color .15s, box-shadow .15s;
 }
 textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
+/* однострочный текст, который растёт по высоте (длинные названия) — выглядит как обычное поле */
+textarea[data-grow] { min-height: 0; resize: none; overflow: hidden; line-height: 1.45; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 input::placeholder, textarea::placeholder { color: var(--faint); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -250,14 +270,15 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .drawer { position: fixed; inset: 0; z-index: 50; }
 .drawer__backdrop { position: absolute; inset: 0; background: rgba(5, 5, 6, .55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity .3s; }
 .drawer__panel {
-  position: absolute; right: 0; top: 0; bottom: 0; width: min(680px, 100%); display: grid; grid-template-rows: auto 1fr auto;
+  /* minmax(0, 1fr) — длинное название в заголовке не растягивает панель шире экрана */
+  position: absolute; right: 0; top: 0; bottom: 0; width: min(680px, 100%); display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto;
   background: var(--bg-2); border-left: 1px solid var(--line); box-shadow: var(--shadow);
   transform: translateX(104%); transition: transform .45s var(--ease);
 }
 .drawer.is-open .drawer__backdrop { opacity: 1; }
 .drawer.is-open .drawer__panel { transform: none; }
 .drawer__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
-.drawer__head h2 { font: 600 1.15rem var(--font-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawer__head h2 { min-width: 0; font: 600 1.15rem var(--font-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drawer__body { overflow-y: auto; padding: 8px 22px 30px; }
 .drawer__section { display: grid; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--line); }
 .drawer__section:last-child { border-bottom: 0; }
@@ -265,6 +286,7 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
 .drawer__section h3 small { font: 700 .72rem var(--font-body); padding: 1px 8px; border-radius: 99px; background: var(--surface-2); color: var(--muted); }
 .drawer__section .hint { margin: 0; }
 .drawer__foot { display: flex; justify-content: space-between; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--line); }
+.drawer__foot-actions { display: flex; gap: 10px; }
 
 /* ---------- Диалог и тост ---------- */
 .confirm { border: 0; padding: 0; border-radius: 20px; background: var(--surface); color: var(--text); width: min(420px, 92vw); box-shadow: var(--shadow); }
@@ -290,13 +312,20 @@ input::placeholder, textarea::placeholder { color: var(--faint); }
   .side__link span { display: none; }
   .topbar { padding: 12px 16px; }
   .topbar h1 { font-size: 1.15rem; }
-  .btn kbd, #openSite span { display: none; }
+  .btn kbd, #openSite span, #previewBtn span { display: none; }
   .row { grid-template-columns: auto 56px 1fr auto; grid-template-areas: "grip thumb main actions" "grip thumb badges actions"; row-gap: 4px; }
   .row__grip { grid-area: grip; } .row__thumb { grid-area: thumb; width: 56px; } .row__main { grid-area: main; } .row__badges { grid-area: badges; justify-content: flex-start; } .row__actions { grid-area: actions; flex-wrap: wrap; justify-content: flex-end; max-width: 80px; }
   .row__num { display: none; }
   .row--contact { grid-template-columns: auto 1fr; grid-template-areas: none; }
   .row--contact .row__actions { grid-column: 1 / -1; max-width: none; justify-content: flex-end; }
   .contact-fields { grid-template-columns: 1fr; }
+  .row--fact { grid-template-columns: auto 1fr; grid-template-areas: none; }
+  .row--fact .row__actions { grid-column: 1 / -1; max-width: none; justify-content: flex-end; }
+  .fact-fields { grid-template-columns: 1fr; }
+  .row--type { grid-template-columns: auto 1fr; grid-template-areas: none; }
+  .row--type .row__badges { grid-column: 2; justify-content: flex-start; }
+  .row--type .row__actions { grid-column: 1 / -1; max-width: none; justify-content: flex-end; }
+  .type-fields { grid-template-columns: 1fr; }
   .grid-2 { grid-template-columns: 1fr; }
   .drawer__body, .drawer__head, .drawer__foot { padding-left: 16px; padding-right: 16px; }
 }

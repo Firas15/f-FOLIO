@@ -57,6 +57,7 @@ $v = (string)@filemtime(__DIR__ . '/assets/admin.js') . (string)@filemtime(__DIR
         </div>
         <div class="topbar__actions">
           <a class="btn btn--ghost" href="../" target="_blank" rel="noopener" id="openSite"></a>
+          <button class="btn btn--ghost" type="button" data-act="preview" id="previewBtn" title="Сайт с несохранёнными правками — обновляется сам"></button>
           <button class="btn btn--accent" type="button" id="saveBtn"></button>
         </div>
       </header>
@@ -75,7 +76,10 @@ $v = (string)@filemtime(__DIR__ . '/assets/admin.js') . (string)@filemtime(__DIR
       <div class="drawer__body" id="drawerBody"></div>
       <footer class="drawer__foot">
         <button class="btn btn--danger-ghost" type="button" data-act="drawer-delete" id="drawerDelete">Удалить</button>
-        <button class="btn btn--accent" type="button" data-act="drawer-close">Готово</button>
+        <div class="drawer__foot-actions">
+          <button class="btn btn--ghost" type="button" data-act="drawer-preview" id="drawerPreview" title="Открыть эту запись на сайте с несохранёнными правками"></button>
+          <button class="btn btn--accent" type="button" data-act="drawer-close">Готово</button>
+        </div>
       </footer>
     </aside>
   </div>

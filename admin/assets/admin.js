@@ -57,7 +57,27 @@
     settings: { title: "Настройки", icon: I.gear },
   };
   const CONTACT_TYPES = { telegram: "Telegram", email: "Почта", github: "GitHub", vk: "ВКонтакте", link: "Ссылка" };
-  const ACH_TYPES = { diploma: "Диплом", certificate: "Сертификат", conference: "Конференция", showcase: "Шоукейс" };
+  // типы достижений правятся в «Достижениях» и хранятся в данных; эти — если их там ещё нет
+  const ACH_TYPES_DEFAULT = [
+    { id: "diploma", plural: "Дипломы", single: "Диплом" },
+    { id: "certificate", plural: "Сертификаты", single: "Сертификат" },
+    { id: "conference", plural: "Конференции", single: "Конференция" },
+    { id: "showcase", plural: "Шоукейсы", single: "Шоукейс" },
+  ];
+  const ACH_TYPES_MAX = 12;
+  // { id: «Диплом» } — для выпадающего списка и подписей
+  const achTypeNames = () => Object.fromEntries(S.data.achievementTypes.map((t) => [t.id, t.single || t.plural || "Без названия"]));
+  const PROJECT_STATUS = { live: "Уже работает", dev: "В разработке" };
+  const PROJECT_KINDS = { site: "Сайт", app: "Приложение", bot: "Бот", db: "База данных", module: "Модуль" };
+  // цифры под именем на первом экране
+  const FACT_KINDS = { projects: "Число работ (авто)", live: "Работающих сайтов (авто)", achievements: "Число достижений (авто)", custom: "Свой текст" };
+  const FACT_WORDS = { projects: ["проект", "проекта", "проектов"], live: ["сайт работает", "сайта работают", "сайтов работают"], achievements: ["достижение", "достижения", "достижений"] };
+  const FACTS_MAX = 4;
+  const plural = (n, [one, few, many]) => {
+    const a = n % 10;
+    const b = n % 100;
+    return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
+  };
 
   /* ---------- Состояние ---------- */
   const S = {
@@ -175,11 +195,21 @@
     d.projects = (Array.isArray(d.projects) ? d.projects : []).map((p) => {
       fix(p);
       p.featured = !!p.featured;
+      p.status = p.status === "dev" ? "dev" : "live";
+      p.kind = PROJECT_KINDS[p.kind] ? p.kind : "site";
       p.tags = Array.isArray(p.tags) ? p.tags : [];
       return p;
     });
+    d.achievementTypes = (Array.isArray(d.achievementTypes) && d.achievementTypes.length ? d.achievementTypes : ACH_TYPES_DEFAULT)
+      .filter((t) => t && typeof t === "object")
+      .map((t) => ({ id: t.id || uid("t"), plural: t.plural || "", single: t.single || "", ...(t.en ? { en: t.en } : {}) }));
     d.achievements = (Array.isArray(d.achievements) ? d.achievements : []).map(fix);
     d.upcomingSlots = Number.isFinite(+d.upcomingSlots) ? +d.upcomingSlots : 2;
+    d.hero = d.hero && typeof d.hero === "object" ? d.hero : {};
+    d.hero.facts = (Array.isArray(d.hero.facts) ? d.hero.facts : [])
+      .filter((f) => f && typeof f === "object")
+      .map((f) => ({ kind: FACT_KINDS[f.kind] ? f.kind : "custom", value: f.value || "", label: f.label || "", ...(f.en ? { en: f.en } : {}) }));
+    d.hero.showWorks = d.hero.showWorks !== false;
     return d;
   }
 
@@ -196,8 +226,38 @@
     st.textContent = v ? "Есть несохранённые изменения" : "Все изменения сохранены";
     st.classList.toggle("is-dirty", v);
     $("#saveBtn").classList.toggle("is-pulse", v);
+    if (v && previewOn) schedulePreview();
   }
   const markDirty = () => setDirty(true);
+
+  /* ---------- Предпросмотр ----------
+     Черновик (все текущие правки, даже несохранённые) кладём в localStorage,
+     сайт с ?preview берёт данные оттуда. Пока вкладка предпросмотра открыта,
+     каждая правка переписывает черновик — и сайт обновляется сам. */
+  const PREVIEW_KEY = "fx-preview";
+  let previewOn = false;
+  let previewTimer;
+  function pushPreview() {
+    try {
+      localStorage.setItem(PREVIEW_KEY, JSON.stringify(S.data));
+      return true;
+    } catch {
+      toast("Не удалось подготовить предпросмотр", "error");
+      return false;
+    }
+  }
+  function schedulePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(pushPreview, 500);
+  }
+  // item — открыть на сайте окно этой работы/достижения и прокрутить к её разделу
+  function openPreview(list, item) {
+    if (!S.data || !pushPreview()) return;
+    previewOn = true;
+    const q = item ? `&open=${encodeURIComponent(item.id)}` : "";
+    const hash = item ? (list === "projects" ? "#works" : "#achievements") : "";
+    window.open(`../?preview=1${q}${hash}`, "fx-preview");
+  }
 
   async function save(force = false) {
     if (S.saving) return;
@@ -296,6 +356,8 @@
   function paintStatic() {
     $("#saveBtn").innerHTML = `${I.save}<span>Сохранить</span><kbd>Ctrl S</kbd>`;
     $("#openSite").innerHTML = `${I.ext}<span>Сайт</span>`;
+    $("#previewBtn").innerHTML = `${I.eye}<span>Предпросмотр</span>`;
+    $("#drawerPreview").innerHTML = `${I.eye}<span>Предпросмотр</span>`;
     $("#logoutBtn").innerHTML = `${I.logout}<span>Выйти</span>`;
     $("#drawerClose").innerHTML = I.x;
     paintTheme();
@@ -372,6 +434,7 @@
         const badges = [
           fp && fp <= 3 ? `<span class="badge badge--accent">${I.star}Ноутбук №${fp}</span>` : "",
           fp && fp > 3 ? `<span class="badge" title="На ноутбуке помещаются только первые 3">${I.star}Не влезает в Топ-3</span>` : "",
+          p.status === "dev" ? `<span class="badge">${PROJECT_STATUS.dev}</span>` : "",
           p.hidden ? `<span class="badge badge--muted">Скрыта</span>` : "",
         ].join("");
         return `
@@ -381,7 +444,7 @@
           <button class="row__thumb" type="button" data-act="edit">${thumb(p)}</button>
           <button class="row__main" type="button" data-act="edit">
             <b>${esc(p.title || "Без названия")}</b>
-            <span>${esc(p.domain || p.category || "без ссылки")} · ${p.images.length} фото</span>
+            <span>${esc([p.kind !== "site" ? PROJECT_KINDS[p.kind] : "", p.domain || p.category || "без ссылки"].filter(Boolean).join(" · "))} · ${p.images.length} фото</span>
           </button>
           <span class="row__badges">${badges}</span>
           <div class="row__actions">${rowActions(p, "projects")}</div>
@@ -395,12 +458,13 @@
           <input type="number" min="0" max="6" data-path="upcomingSlots" value="${esc(S.data.upcomingSlots)}">
         </label>
       </div>
-      <p class="hint">Порядок здесь = порядок на сайте. Перетаскивайте за ${I.grip} или жмите стрелки. ${I.star} — показать на ноутбуке: там видны первые три отмеченные работы.</p>
+      <p class="hint">Порядок здесь = порядок на сайте. Перетаскивайте за ${I.grip} или жмите стрелки. ${I.star} — показать на ноутбуке и на мониторах первого экрана: там видны первые три отмеченные работы.</p>
       ${list.length ? `<ul class="rows" data-sortable="projects">${rows}</ul>` : emptyState("Работ пока нет", "add-project", "Добавить первую работу")}`;
   }
 
   function viewAchievements() {
     const list = S.data.achievements;
+    const names = achTypeNames();
     const rows = list
       .map(
         (a, i) => `
@@ -410,7 +474,7 @@
           <button class="row__thumb" type="button" data-act="edit">${thumb(a)}</button>
           <button class="row__main" type="button" data-act="edit">
             <b>${esc(a.title || "Без названия")}</b>
-            <span>${esc([ACH_TYPES[a.type], a.org, a.date].filter(Boolean).join(" · "))} · ${a.images.length} фото</span>
+            <span>${esc([names[a.type], a.org, a.date].filter(Boolean).join(" · "))} · ${a.images.length} фото</span>
           </button>
           <span class="row__badges">${a.hidden ? `<span class="badge badge--muted">Скрыто</span>` : ""}</span>
           <div class="row__actions">${rowActions(a, "achievements")}</div>
@@ -421,15 +485,54 @@
       <div class="toolbar">
         <button class="btn btn--accent" type="button" data-act="add-ach">${I.plus}<span>Добавить достижение</span></button>
       </div>
-      <p class="hint">Дипломы, сертификаты, конференции и шоукейсы. Счётчики и фильтры на сайте пересчитываются сами.</p>
-      ${list.length ? `<ul class="rows" data-sortable="achievements">${rows}</ul>` : emptyState("Достижений пока нет", "add-ach", "Добавить первое")}`;
+      <p class="hint">Тип выбирается в карточке достижения, сами типы — ниже. Счётчики и вкладки на сайте пересчитываются сами.</p>
+      ${list.length ? `<ul class="rows" data-sortable="achievements">${rows}</ul>` : emptyState("Достижений пока нет", "add-ach", "Добавить первое")}
+      ${viewAchTypes()}`;
+  }
+
+  /* --- типы достижений: вкладки на сайте --- */
+  function viewAchTypes() {
+    const types = S.data.achievementTypes;
+    const rows = types
+      .map((t, k) => {
+        const all = S.data.achievements.filter((a) => a.type === t.id);
+        const shown = all.filter((a) => !a.hidden).length;
+        return `
+        <li class="row row--type" data-list="achievementTypes" data-k="${k}">
+          <span class="row__grip" data-grip title="Перетащите, чтобы изменить порядок вкладок">${I.grip}</span>
+          <div class="type-fields">
+            ${field("Вкладка на сайте", `achievementTypes.${k}.plural`, { placeholder: "Хакатоны", max: 40 })}
+            ${field("На карточке", `achievementTypes.${k}.single`, { placeholder: "Хакатон", max: 40 })}
+          </div>
+          <span class="row__badges">
+            <span class="badge">${all.length} шт.</span>
+            ${shown ? "" : `<span class="badge badge--muted" title="Пока в этом типе нет видимых достижений">Не виден на сайте</span>`}
+          </span>
+          <div class="row__actions">
+            <button class="icon-btn" type="button" data-act="move-up" title="Левее">${I.up}</button>
+            <button class="icon-btn" type="button" data-act="move-down" title="Правее">${I.down}</button>
+            <button class="icon-btn icon-btn--danger" type="button" data-act="delete" title="Удалить тип">${I.trash}</button>
+          </div>
+        </li>`;
+      })
+      .join("");
+    return `
+      <section class="card ach-types">
+        <h2>Типы достижений</h2>
+        <p class="hint">Это вкладки над достижениями на сайте, в том же порядке. Тип, в котором нет ни одного видимого достижения, на сайте не показывается. Удалить можно только пустой тип.</p>
+        <ul class="rows" data-sortable="achievementTypes">${rows}</ul>
+        ${types.length < ACH_TYPES_MAX ? `<button class="btn btn--ghost btn--sm" type="button" data-act="add-ach-type">${I.plus}<span>Добавить тип</span></button>` : ""}
+      </section>`;
   }
 
   /* --- поля формы --- */
-  function field(label, path, { type = "text", placeholder = "", max = 0, hint = "", list = "", rows = 0 } = {}) {
+  // grow — однострочный текст, который не влезает в поле: textarea растёт по высоте, Enter не переносит строку
+  function field(label, path, { type = "text", placeholder = "", max = 0, hint = "", list = "", rows = 0, grow = false } = {}) {
     const v = readField(path) ?? "";
     const attrs = `data-path="${esc(path)}" placeholder="${esc(placeholder)}"${max ? ` maxlength="${max}"` : ""}${list ? ` list="${list}"` : ""}`;
-    const input = rows ? `<textarea rows="${rows}" ${attrs}>${esc(v)}</textarea>` : `<input type="${type}" value="${esc(v)}" ${attrs}>`;
+    const input = grow
+      ? `<textarea rows="1" data-grow ${attrs}>${esc(v)}</textarea>`
+      : rows ? `<textarea rows="${rows}" ${attrs}>${esc(v)}</textarea>` : `<input type="${type}" value="${esc(v)}" ${attrs}>`;
     const counter = max ? `<small class="counter" data-counter="${esc(path)}">${String(v).length} / ${max}</small>` : "";
     return `<label class="field"><span>${label}${counter}</span>${input}${hint ? `<small class="field__hint">${hint}</small>` : ""}</label>`;
   }
@@ -540,10 +643,65 @@
           </div>
         </section>
         <section class="card card--wide">
+          <h2>Первый экран: цифры и работы</h2>
+          <p class="hint">Под именем — до ${FACTS_MAX} цифр. «Авто» считаются сами по работам и достижениям, которые видны на сайте; если подпись пустая, она подберётся сама («3 проекта»). Рядом — три монитора с превью топ-3 работ.</p>
+          <div class="facts-preview" id="factsPreview" aria-label="Как это будет на сайте">${factsPreviewHtml()}</div>
+          ${viewFacts()}
+          ${toggle("Мониторы с топ-3 работами", "hero.showWorks", "Те же работы, что на ноутбуке: отмеченные ★ в «Работах». Клик по монитору открывает работу")}
+        </section>
+        <section class="card card--wide">
           <h2>Бегущая строка</h2>
           ${chips("Навыки и направления", "profile.skills", "Напишите и нажмите Enter")}
         </section>
       </div>`;
+  }
+
+  /* --- цифры на первом экране --- */
+  // то же, что покажет сайт: скрытые записи не считаются
+  function factShown(f) {
+    const projects = S.data.projects.filter((p) => !p.hidden);
+    const n = {
+      projects: projects.length,
+      live: projects.filter((p) => p.status !== "dev").length,
+      achievements: S.data.achievements.filter((a) => !a.hidden).length,
+    }[f.kind];
+    if (n == null) return { value: f.value, label: f.label };
+    return { value: String(n).padStart(2, "0"), label: f.label || plural(n, FACT_WORDS[f.kind]) };
+  }
+
+  function factsPreviewHtml() {
+    const facts = S.data.hero.facts;
+    if (!facts.length) return `<p class="muted">Цифр нет — под именем останутся только мониторы с работами.</p>`;
+    return facts.map((f) => { const s = factShown(f); return `<div class="fp"><b>${esc(s.value || "—")}</b><span>${esc(s.label)}</span></div>`; }).join("");
+  }
+
+  function viewFacts() {
+    const facts = S.data.hero.facts;
+    const rows = facts
+      .map((f, k) => {
+        const auto = f.kind !== "custom";
+        const s = factShown(f);
+        return `
+        <li class="row row--fact" data-list="hero.facts" data-k="${k}">
+          <span class="row__grip" data-grip title="Перетащите, чтобы изменить порядок">${I.grip}</span>
+          <div class="fact-fields">
+            ${select("Что показать", `hero.facts.${k}.kind`, FACT_KINDS)}
+            ${auto
+              ? `<label class="field"><span>Значение</span><input type="text" value="${esc(s.value)}" disabled title="Считается само"></label>`
+              : field("Значение", `hero.facts.${k}.value`, { placeholder: "∞", max: 12 })}
+            ${field("Подпись", `hero.facts.${k}.label`, { placeholder: auto ? s.label : "чашек кофе", max: 40 })}
+          </div>
+          <div class="row__actions">
+            <button class="icon-btn" type="button" data-act="move-up" title="Выше">${I.up}</button>
+            <button class="icon-btn" type="button" data-act="move-down" title="Ниже">${I.down}</button>
+            <button class="icon-btn icon-btn--danger" type="button" data-act="delete" title="Удалить">${I.trash}</button>
+          </div>
+        </li>`;
+      })
+      .join("");
+    return `
+      ${facts.length ? `<ul class="rows facts-rows" data-sortable="hero.facts">${rows}</ul>` : ""}
+      ${facts.length < FACTS_MAX ? `<button class="btn btn--ghost btn--sm" type="button" data-act="add-fact">${I.plus}<span>Добавить цифру</span></button>` : ""}`;
   }
 
   function viewContacts() {
@@ -656,17 +814,21 @@
         <section class="drawer__section">
           <h3>Фото <small>${x.images.length}</small></h3>
           ${photoGrid("@images", "projects")}
-          <p class="hint">Первое фото — обложка: оно на ноутбуке и в карточке. Для сайта лучше длинный скриншот всей страницы шириной ~1440px, остальные — что угодно: экраны, фото с защиты, макеты.</p>
+          <p class="hint">Первое фото — обложка: оно на ноутбуке и в карточке. Для сайта лучше длинный скриншот всей страницы шириной ~1440px, остальные — что угодно: экраны, фото с защиты, макеты. Нет фото — на сайте будет автоматическая обложка по виду работы.</p>
         </section>
         <section class="drawer__section">
-          ${field("Название", "@title", { placeholder: "GameCode", max: 120 })}
+          ${field("Название", "@title", { placeholder: "GameCode", max: 120, grow: true })}
+          ${select("Вид работы (оформление карточки и обложки)", "@kind", PROJECT_KINDS)}
           <div class="grid-2">
-            ${field("Ссылка на сайт", "@url", { type: "url", placeholder: "https://…" })}
+            ${field("Ссылка", "@url", { type: "url", placeholder: "https://…", hint: "Сайт, GitHub или бот в Telegram — подпись кнопки подберётся сама" })}
             ${field("Как показывать адрес", "@domain", { placeholder: "заполнится сам" })}
           </div>
-          ${field("Категория", "@category", { placeholder: "Веб-платформа", list: "catList" })}
+          <div class="grid-2">
+            ${select("Статус (по нему фильтр на сайте)", "@status", PROJECT_STATUS)}
+            ${field("Категория", "@category", { placeholder: "Веб-платформа", list: "catList" })}
+          </div>
           <datalist id="catList">${[...new Set(S.data.projects.map((p) => p.category).filter(Boolean))].map((c) => `<option value="${esc(c)}">`).join("")}</datalist>
-          ${chips("Теги (по ним фильтр на сайте)", "@tags", "Напишите тег и нажмите Enter")}
+          ${chips("Теги", "@tags", "Напишите тег и нажмите Enter")}
           ${field("Коротко — для карточки", "@short", { max: 220, rows: 2 })}
           ${field("Подробно — для окна проекта и ноутбука", "@description", { max: 3000, rows: 6 })}
         </section>
@@ -681,21 +843,33 @@
           <p class="hint">Первое фото — обложка карточки. По клику на сайте откроется галерея со всеми фото.</p>
         </section>
         <section class="drawer__section">
-          ${select("Тип", "@type", ACH_TYPES)}
-          ${field("Название", "@title", { placeholder: "Диплом III степени", max: 200 })}
+          ${select("Тип", "@type", achTypeNames())}
+          ${field("Название", "@title", { placeholder: "Диплом III степени", max: 200, grow: true })}
           <div class="grid-2">
-            ${field("Где / кем выдан", "@org", { placeholder: "Конференция, вуз, компания" })}
+            ${field("Где / кем выдан", "@org", { placeholder: "Конференция, вуз, компания", max: 200, grow: true })}
             ${field("Когда", "@date", { placeholder: "Май 2026" })}
           </div>
           ${toggle("Скрыть с сайта", "@hidden")}
         </section>`;
+    $$("#drawerBody textarea[data-grow]").forEach(fitArea);
   }
+
+  // высота поля data-grow — по тексту, без полосы прокрутки
+  function fitArea(el) {
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + 2 + "px";
+  }
+  addEventListener("resize", () => $$("textarea[data-grow]").forEach(fitArea));
+  // в однострочном поле Enter не переносит строку
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.matches && e.target.matches("textarea[data-grow]")) e.preventDefault();
+  });
 
   /* ---------- Действия ---------- */
   function listOf(el) {
     const row = el.closest("[data-list]");
     if (!row) return null;
-    const list = S.data[row.dataset.list];
+    const list = getPath(S.data, row.dataset.list); // «projects» или вложенный путь вроде «hero.facts»
     const idx = row.dataset.id != null ? list.findIndex((x) => x.id === row.dataset.id) : +row.dataset.k;
     return { name: row.dataset.list, list, idx, item: list[idx] };
   }
@@ -714,14 +888,14 @@
 
     switch (act) {
       case "add-project": {
-        const p = { id: uid("p"), title: "", url: "", domain: "", category: "", tags: [], short: "", description: "", images: [], featured: false, hidden: false };
+        const p = { id: uid("p"), title: "", url: "", domain: "", category: "", status: "live", kind: "site", tags: [], short: "", description: "", images: [], featured: false, hidden: false };
         S.data.projects.unshift(p);
         markDirty();
         renderView();
         return openDrawer("projects", p.id);
       }
       case "add-ach": {
-        const a = { id: uid("a"), type: "diploma", title: "", org: "", date: "", images: [], hidden: false };
+        const a = { id: uid("a"), type: S.data.achievementTypes[0]?.id || "", title: "", org: "", date: "", images: [], hidden: false };
         S.data.achievements.unshift(a);
         markDirty();
         renderView();
@@ -732,6 +906,18 @@
         markDirty();
         renderView();
         return $$("#view .row--contact").at(-1)?.querySelector("input")?.focus();
+      case "add-ach-type":
+        if (S.data.achievementTypes.length >= ACH_TYPES_MAX) return;
+        S.data.achievementTypes.push({ id: uid("t"), plural: "", single: "" });
+        markDirty();
+        renderView();
+        return $$("#view .row--type").at(-1)?.querySelector("input")?.focus();
+      case "add-fact":
+        if (S.data.hero.facts.length >= FACTS_MAX) return;
+        S.data.hero.facts.push({ kind: "custom", value: "", label: "" });
+        markDirty();
+        renderView();
+        return $$("#view .row--fact").at(-1)?.querySelector("input")?.focus();
       case "edit":
         return ctx && openDrawer(ctx.name, ctx.item.id);
       case "feature":
@@ -745,11 +931,21 @@
         if (!move(ctx.list, ctx.idx, ctx.idx + (act === "move-up" ? -1 : 1))) return;
         break;
       case "delete": {
-        const name = ctx.item.title || ctx.item.value || "эту запись";
+        // тип нельзя удалить, пока он у кого-то стоит, и последний тип тоже нельзя
+        if (ctx.name === "achievementTypes") {
+          const used = S.data.achievements.filter((a) => a.type === ctx.item.id).length;
+          if (used) return toast(`Этот тип стоит у достижений: ${used}. Сначала смените им тип`, "error");
+          if (ctx.list.length < 2) return toast("Нужен хотя бы один тип", "error");
+        }
+        const name = ctx.item.title || ctx.item.plural || ctx.item.value || "эту запись";
         if (!(await confirmBox(`Удалить «${name}»? Это можно отменить, если не сохранять изменения.`, "Удалить", true))) return;
         ctx.list.splice(ctx.idx, 1);
         break;
       }
+      case "preview":
+        return openPreview();
+      case "drawer-preview":
+        return S.edit && openPreview(S.edit.list, currentItem());
       case "drawer-close":
         return closeDrawer();
       case "drawer-delete": {
@@ -837,6 +1033,15 @@
     const el = e.target;
     if (!el.dataset || !el.dataset.path || !S.data) return;
     const path = el.dataset.path;
+    // однострочное поле: вставленные переносы строк превращаем в пробелы, высоту подгоняем под текст
+    if (el.hasAttribute("data-grow")) {
+      if (/[\r\n]/.test(el.value)) {
+        const pos = el.selectionStart;
+        el.value = el.value.replace(/\s*[\r\n]+\s*/g, " ");
+        el.setSelectionRange(Math.min(pos, el.value.length), Math.min(pos, el.value.length));
+      }
+      fitArea(el);
+    }
     let v = el.type === "checkbox" ? el.checked : el.type === "number" ? Math.max(0, Math.min(6, parseInt(el.value, 10) || 0)) : el.value;
     const before = readField(path);
     writeField(path, v);
@@ -869,6 +1074,12 @@
         const labelInput = el.closest(".row").querySelector(`[data-path="contacts.${cm[1]}.label"]`);
         if (labelInput) labelInput.value = c.label;
       }
+    }
+    // цифры первого экрана: смена типа меняет поля строки, остальное — только превью
+    if (/^hero\.facts\.\d+\.kind$/.test(path)) return renderView();
+    if (path.startsWith("hero.facts.")) {
+      const pv = $("#factsPreview");
+      if (pv) pv.innerHTML = factsPreviewHtml();
     }
     if (path === "@title") $("#drawerTitle").textContent = v || "Без названия";
     if (el.closest("#drawer") || el.type === "checkbox") {

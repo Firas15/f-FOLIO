@@ -26,7 +26,19 @@ const SESSION_IDLE_SECONDS = 8 * 3600;
 const MIN_PASSWORD_LENGTH = 8;
 
 const CONTACT_TYPES = ['telegram', 'email', 'github', 'vk', 'link'];
-const ACH_TYPES = ['diploma', 'certificate', 'conference', 'showcase'];
+// вид работы: от него зависит оформление карточки и автоматическая обложка
+const PROJECT_KINDS = ['site', 'app', 'bot', 'db', 'module'];
+// типы достижений правятся в админке; эти — если в данных их ещё нет
+const ACH_TYPES_DEFAULT = [
+    ['id' => 'diploma', 'plural' => 'Дипломы', 'single' => 'Диплом'],
+    ['id' => 'certificate', 'plural' => 'Сертификаты', 'single' => 'Сертификат'],
+    ['id' => 'conference', 'plural' => 'Конференции', 'single' => 'Конференция'],
+    ['id' => 'showcase', 'plural' => 'Шоукейсы', 'single' => 'Шоукейс'],
+];
+const ACH_TYPES_MAX = 12;
+// цифры на первом экране: авто-счётчики или свой текст
+const FACT_KINDS = ['projects', 'live', 'achievements', 'custom'];
+const HERO_FACTS_MAX = 4;
 
 /* ---------- Ответы ---------- */
 
@@ -207,6 +219,30 @@ function unique_ids(array $items): array
     return $items;
 }
 
+/* английская версия записи: поле en с теми же ключами, что и у русской.
+   $spec — ключ => длина строки, 'list' — список тегов, массив — вложенный объект.
+   Пустые поля выбрасываем (на сайте вместо них остаётся русский текст). */
+function clean_en(mixed $v, array $spec): array
+{
+    if (!is_array($v)) return [];
+    $out = [];
+    foreach ($spec as $k => $rule) {
+        if (is_array($rule)) $val = clean_en($v[$k] ?? null, $rule);
+        elseif ($rule === 'list') $val = clean_list($v[$k] ?? [], fn($t) => clean_str($t, 40), 30);
+        else $val = clean_str($v[$k] ?? '', $rule);
+        if ($val !== '' && $val !== []) $out[$k] = $val;
+    }
+    return $out;
+}
+
+// добавляет en к записи, только если в нём что-то есть
+function with_en(array $rec, mixed $en, array $spec): array
+{
+    $en = clean_en($en, $spec);
+    if ($en) $rec['en'] = $en;
+    return $rec;
+}
+
 function sanitize_data(mixed $in): array
 {
     if (!is_array($in)) fail('Неверный формат данных');
@@ -241,6 +277,12 @@ function sanitize_data(mixed $in): array
         ],
         'skills' => clean_list($p['skills'] ?? [], $tag, 30),
     ];
+    $profile = with_en($profile, $p['en'] ?? null, [
+        'firstName' => 60, 'lastName' => 60, 'role' => 80, 'city' => 80, 'status' => 120, 'quote' => 300,
+        'study' => ['place' => 120, 'program' => 160, 'short' => 20, 'level' => 60],
+        'work' => ['company' => 120, 'city' => 80, 'about' => 160],
+        'skills' => 'list',
+    ]);
 
     $contacts = clean_list($in['contacts'] ?? [], function ($c) {
         if (!is_array($c)) return null;
@@ -248,49 +290,77 @@ function sanitize_data(mixed $in): array
         $value = clean_str($c['value'] ?? '', 120);
         $url = clean_url($c['url'] ?? '');
         if ($value === '' && $url === '') return null;
-        return ['type' => $type, 'label' => clean_str($c['label'] ?? '', 40), 'value' => $value, 'url' => $url];
+        return with_en(['type' => $type, 'label' => clean_str($c['label'] ?? '', 40), 'value' => $value, 'url' => $url], $c['en'] ?? null, ['label' => 40]);
     }, 20);
 
     $projects = clean_list($in['projects'] ?? [], function ($x) use ($tag) {
         if (!is_array($x)) return null;
         $title = clean_str($x['title'] ?? '', 120);
-        return [
+        return with_en([
             'id' => clean_id($x['id'] ?? $title),
             'title' => $title !== '' ? $title : 'Без названия',
             'url' => clean_url($x['url'] ?? ''),
             'domain' => clean_str($x['domain'] ?? '', 120),
             'category' => clean_str($x['category'] ?? '', 80),
+            'status' => ($x['status'] ?? '') === 'dev' ? 'dev' : 'live',
+            'kind' => in_array($x['kind'] ?? '', PROJECT_KINDS, true) ? $x['kind'] : 'site',
             'tags' => clean_list($x['tags'] ?? [], $tag, 12),
             'short' => clean_str($x['short'] ?? '', 220),
             'description' => clean_str($x['description'] ?? '', 3000),
             'images' => clean_list($x['images'] ?? [], 'clean_img', 40),
             'featured' => !empty($x['featured']),
             'hidden' => !empty($x['hidden']),
-        ];
+        ], $x['en'] ?? null, ['title' => 120, 'category' => 80, 'tags' => 'list', 'short' => 220, 'description' => 3000]);
     }, 200);
 
-    $achievements = clean_list($in['achievements'] ?? [], function ($x) {
+    // типы достижений: вкладка (мн. число) и подпись на карточке (ед. число); хотя бы один должен быть
+    $achTypes = !is_array($in['achievementTypes'] ?? null) ? ACH_TYPES_DEFAULT : clean_list($in['achievementTypes'], function ($t) {
+        if (!is_array($t)) return null;
+        $plural = clean_str($t['plural'] ?? '', 40);
+        $single = clean_str($t['single'] ?? '', 40);
+        if ($plural === '' && $single === '') return null;
+        return with_en(['id' => clean_id($t['id'] ?? ''), 'plural' => $plural !== '' ? $plural : $single, 'single' => $single !== '' ? $single : $plural], $t['en'] ?? null, ['plural' => 40, 'single' => 40]);
+    }, ACH_TYPES_MAX);
+    $achTypes = $achTypes ? unique_ids($achTypes) : ACH_TYPES_DEFAULT;
+    $typeIds = array_column($achTypes, 'id');
+
+    $achievements = clean_list($in['achievements'] ?? [], function ($x) use ($typeIds) {
         if (!is_array($x)) return null;
         $title = clean_str($x['title'] ?? '', 200);
-        return [
+        return with_en([
             'id' => clean_id($x['id'] ?? $title),
-            'type' => in_array($x['type'] ?? '', ACH_TYPES, true) ? $x['type'] : 'diploma',
+            'type' => in_array($x['type'] ?? '', $typeIds, true) ? $x['type'] : $typeIds[0],
             'title' => $title !== '' ? $title : 'Без названия',
             'org' => clean_str($x['org'] ?? '', 200),
             'date' => clean_str($x['date'] ?? '', 40),
             'images' => clean_list($x['images'] ?? [], 'clean_img', 40),
             'hidden' => !empty($x['hidden']),
-        ];
+        ], $x['en'] ?? null, ['title' => 200, 'org' => 200, 'date' => 40]);
     }, 300);
 
     $slots = (int)($in['upcomingSlots'] ?? 0);
+
+    // первый экран: цифры под именем и мониторы с топ-3 работами
+    $hero = is_array($in['hero'] ?? null) ? $in['hero'] : [];
+    $facts = clean_list($hero['facts'] ?? [], function ($f) {
+        if (!is_array($f)) return null;
+        $kind = in_array($f['kind'] ?? '', FACT_KINDS, true) ? $f['kind'] : 'custom';
+        $value = $kind === 'custom' ? clean_str($f['value'] ?? '', 12) : '';
+        if ($kind === 'custom' && $value === '') return null;
+        return with_en(['kind' => $kind, 'value' => $value, 'label' => clean_str($f['label'] ?? '', 40)], $f['en'] ?? null, ['value' => 12, 'label' => 40]);
+    }, HERO_FACTS_MAX);
 
     return [
         'profile' => $profile,
         'contacts' => $contacts,
         'projects' => unique_ids($projects),
         'upcomingSlots' => max(0, min(6, $slots)),
+        'achievementTypes' => $achTypes,
         'achievements' => unique_ids($achievements),
+        'hero' => [
+            'facts' => $facts,
+            'showWorks' => !array_key_exists('showWorks', $hero) || !empty($hero['showWorks']),
+        ],
     ];
 }
 

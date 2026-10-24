@@ -11,13 +11,19 @@
   <meta property="og:image" content="assets/img/photos/firas.webp">
   <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
   <script>
-    // Тема до отрисовки, чтобы не мигало
+    // Тема и язык до отрисовки, чтобы не мигало. Английский: страница скрыта, пока скрипт не подставит перевод
     (function () {
-      var t;
+      var t, l, h = document.documentElement;
       try { t = localStorage.getItem("theme"); } catch (e) {}
       if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-      document.documentElement.dataset.theme = t;
-      document.documentElement.classList.add("js");
+      h.dataset.theme = t;
+      h.classList.add("js");
+      try { l = new URLSearchParams(location.search).get("lang") || localStorage.getItem("lang"); } catch (e) {}
+      if (l === "en") {
+        h.lang = "en";
+        h.classList.add("i18n-wait");
+        setTimeout(function () { h.classList.remove("i18n-wait"); }, 3000);
+      }
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,7 +34,8 @@
   <script src="assets/js/main.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main">К содержимому</a>
+  <!-- Перевод: data-en — текст, data-en-html — разметка, data-en-aria / -title / -alt / -cursor — атрибуты -->
+  <a class="skip-link" href="#main" data-en="Skip to content">К содержимому</a>
 
   <!-- Вступление: включается старый телевизор -->
   <div class="tv" id="tv" aria-hidden="true">
@@ -41,7 +48,7 @@
     </div>
     <div class="tv__scan"></div>
     <div class="tv__vignette"></div>
-    <span class="tv__hint">клик — пропустить</span>
+    <span class="tv__hint" data-en="click to skip">клик — пропустить</span>
   </div>
 
   <!-- Вступление «запуск сайта»: тёмная надпись имени и терминал под ней -->
@@ -54,9 +61,9 @@
     </div>
     <div class="cdone" id="cDone">
       <svg class="cdone__check" viewBox="0 0 46 46"><circle cx="23" cy="23" r="20"/><path d="m14.5 23.5 6 6 11-12"/></svg>
-      <span><b>Задача выполнена</b><small id="cDoneTime">сайт запущен</small></span>
+      <span><b data-en="Task complete">Задача выполнена</b><small id="cDoneTime">сайт запущен</small></span>
     </div>
-    <span class="compile__hint">клик — пропустить</span>
+    <span class="compile__hint" data-en="click to skip">клик — пропустить</span>
   </div>
 
   <!-- Плёнка поверх всего сайта: зерно, развёртка, трекинг -->
@@ -67,43 +74,45 @@
 
   <!-- Шапка -->
   <header class="nav" id="nav">
-    <a href="#top" class="logo" data-magnetic aria-label="F/FOLIO — наверх">
+    <a href="#top" class="logo" data-magnetic aria-label="F/FOLIO — наверх" data-en-aria="F/FOLIO — back to top">
       <span class="logo__mark" aria-hidden="true"><svg viewBox="3.5 7.5 33 27"><path class="lm-body" d="M4 11.5A3.5 3.5 0 0 1 7.5 8h8.2l3.6 3.6h13.2A3.5 3.5 0 0 1 36 15.1v15.4a3.5 3.5 0 0 1-3.5 3.5h-25A3.5 3.5 0 0 1 4 30.5z"/><path class="lm-tab" d="M7.5 8h8.2l3.6 3.6H4A3.5 3.5 0 0 1 7.5 8z"/><path class="lm-f" d="M11 17h9.5v3.6h-5.4v2.6h4.6v3.6h-4.6V31H11z"/><path class="lm-f" d="M22.5 31h3.8l4.4-14h-3.8z"/></svg></span>
       <span class="logo__text">F<b>/</b>FOLIO</span>
     </a>
-    <nav class="nav__links" aria-label="Разделы">
-      <a href="#top" data-spy="top">Главная</a>
-      <a href="#showcase" data-spy="showcase">Топ работ</a>
-      <a href="#about" data-spy="about">Обо мне</a>
-      <a href="#works" data-spy="works">Проекты</a>
-      <a href="#achievements" data-spy="achievements">Достижения</a>
-      <a href="#contact" data-spy="contact">Контакты</a>
+    <nav class="nav__links" aria-label="Разделы" data-en-aria="Sections">
+      <a href="#top" data-spy="top" data-en="Home">Главная</a>
+      <a href="#showcase" data-spy="showcase" data-en="Top works">Топ работ</a>
+      <a href="#about" data-spy="about" data-en="About">Обо мне</a>
+      <a href="#works" data-spy="works" data-en="Projects">Проекты</a>
+      <a href="#achievements" data-spy="achievements" data-en="Achievements">Достижения</a>
+      <a href="#contact" data-spy="contact" data-en="Contact">Контакты</a>
       <span class="nav__pill" aria-hidden="true"></span>
     </nav>
     <div class="nav__actions">
-      <button class="icon-btn" id="termBtn" type="button" aria-label="Открыть терминал" title="Терминал — клавиша `">
+      <!-- переключатель языка: показывает язык, на который переключит -->
+      <button class="icon-btn lang-btn" id="langBtn" type="button" aria-label="Switch to English" data-en-aria="Переключить на русский" data-en="RU" lang="en">EN</button>
+      <button class="icon-btn" id="termBtn" type="button" aria-label="Открыть терминал" title="Терминал — клавиша `" data-en-aria="Open terminal" data-en-title="Terminal — press `">
         <svg viewBox="0 0 24 24"><path d="m5 17 5-5-5-5"/><path d="M12 19h7"/></svg>
       </button>
-      <button class="icon-btn theme-toggle" id="themeBtn" type="button" aria-label="Сменить тему">
+      <button class="icon-btn theme-toggle" id="themeBtn" type="button" aria-label="Сменить тему" data-en-aria="Toggle theme">
         <svg viewBox="0 0 24 24" class="theme-toggle__svg">
           <mask id="moonMask"><rect width="24" height="24" fill="#fff"/><circle class="theme-toggle__cut" cx="24" cy="4" r="7" fill="#000"/></mask>
           <circle class="theme-toggle__core" cx="12" cy="12" r="5" mask="url(#moonMask)" fill="currentColor" stroke="none"/>
           <g class="theme-toggle__rays"><path d="M12 1.5v2M12 20.5v2M3.5 12h-2M22.5 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4"/></g>
         </svg>
       </button>
-      <a class="btn btn--light btn--sm nav__cta" href="#contact" data-magnetic>Связаться</a>
-      <button class="burger" id="burger" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="mobileMenu"><i></i><i></i></button>
+      <a class="btn btn--light btn--sm nav__cta" href="#contact" data-magnetic data-en="Get in touch">Связаться</a>
+      <button class="burger" id="burger" type="button" aria-label="Открыть меню" data-en-aria="Open menu" aria-expanded="false" aria-controls="mobileMenu"><i></i><i></i></button>
     </div>
   </header>
 
   <div class="mobile-menu" id="mobileMenu" hidden>
-    <nav aria-label="Меню">
-      <a href="#top">Главная</a>
-      <a href="#showcase">Топ работ</a>
-      <a href="#about">Обо мне</a>
-      <a href="#works">Проекты</a>
-      <a href="#achievements">Достижения</a>
-      <a href="#contact">Контакты</a>
+    <nav aria-label="Меню" data-en-aria="Menu">
+      <a href="#top" data-en="Home">Главная</a>
+      <a href="#showcase" data-en="Top works">Топ работ</a>
+      <a href="#about" data-en="About">Обо мне</a>
+      <a href="#works" data-en="Projects">Проекты</a>
+      <a href="#achievements" data-en="Achievements">Достижения</a>
+      <a href="#contact" data-en="Contact">Контакты</a>
     </nav>
     <div class="mobile-menu__foot" id="mobileContacts"></div>
   </div>
@@ -114,19 +123,22 @@
       <div class="hero__bg" aria-hidden="true"><pre class="hero__src"></pre><pre class="hero__src hero__src--lit"></pre><canvas class="hero__liquid" id="heroLiquid"></canvas><div class="hero__vignette"></div></div>
 
       <h1 class="hero__title">
-        <span class="sr-only">Привет, я Фирас Хашаб — программист</span>
-        <span class="hero__name" aria-hidden="true" id="heroName">Фирас Хашаб</span>
+        <span class="sr-only" data-en="Hi, I’m Firas Khashab — a software developer">Привет, я Фирас Хашаб — программист</span>
+        <span class="hero__name" aria-hidden="true" id="heroName" data-en="Firas Khashab">Фирас Хашаб</span>
       </h1>
 
+      <!-- Под именем: слева бейдж висит из-под «ФИРАС» рядом с «ХАШАБ»,
+           справа мониторы с превью топ-3 работ, под ними цифры (всё из админки) -->
+      <div class="hero__mid" id="heroMid">
       <!-- Бейдж: висит на ленте, раскачивается, переворачивается -->
       <div class="idcard" id="idcard">
-        <div class="idcard__strap" aria-hidden="true"><span>F/FOLIO · ОТКРЫТ К ПРОЕКТАМ · F/FOLIO · ОТКРЫТ К ПРОЕКТАМ · </span></div>
+        <div class="idcard__strap" aria-hidden="true"><span data-en="F/FOLIO · OPEN TO PROJECTS · F/FOLIO · OPEN TO PROJECTS · ">F/FOLIO · ОТКРЫТ К ПРОЕКТАМ · F/FOLIO · ОТКРЫТ К ПРОЕКТАМ · </span></div>
         <div class="idcard__clip" aria-hidden="true"></div>
-        <div class="idcard__flip" id="idFlip" role="button" tabindex="0" aria-pressed="false" aria-label="Бейдж. Нажмите, чтобы перевернуть и увидеть контакты" data-cursor="Перевернуть">
+        <div class="idcard__flip" id="idFlip" role="button" tabindex="0" aria-pressed="false" aria-label="Бейдж. Нажмите, чтобы перевернуть и увидеть контакты" data-cursor="Перевернуть" data-en-aria="Badge. Press to flip it and see my contacts" data-en-cursor="Flip">
           <div class="idcard__face idcard__front">
             <div class="idcard__hole"></div>
             <div class="idcard__top"><span class="idcard__brand">F<b>/</b>FOLIO</span><span class="idcard__pill">DEV</span></div>
-            <div class="idcard__photo"><img src="assets/img/photos/firas.webp" alt="Фирас Хашаб" width="910" height="1280" fetchpriority="high" id="heroImg" draggable="false"></div>
+            <div class="idcard__photo"><img src="assets/img/photos/firas.webp" alt="Фирас Хашаб" data-en-alt="Firas Khashab" width="910" height="1280" fetchpriority="high" id="heroImg" draggable="false"></div>
             <p class="idcard__name" id="idName">Фирас Хашаб</p>
             <p class="idcard__role" id="idRole">Программист</p>
             <div class="idcard__foot"><span>ID 0001<br>ACCESS: ALL</span><i class="idcard__bars"></i></div>
@@ -134,33 +146,42 @@
           <div class="idcard__face idcard__back">
             <div class="idcard__hole"></div>
             <div class="idcard__top"><span class="idcard__brand">F<b>/</b>FOLIO</span><span class="idcard__pill">CONTACT</span></div>
-            <a class="idcard__qr" id="idQrLink" href="#contact" aria-label="Открыть Telegram"><img src="assets/img/qr-telegram.webp" alt="QR-код: Telegram" id="idQr" draggable="false"></a>
+            <a class="idcard__qr" id="idQrLink" href="#contact" aria-label="Открыть Telegram" data-en-aria="Open Telegram"><img src="assets/img/qr-telegram.webp" alt="QR-код: Telegram" data-en-alt="QR code: Telegram" id="idQr" draggable="false"></a>
             <ul class="idcard__now">
               <li><small id="nowWorkLabel">Работаю</small><b id="nowWork">—</b></li>
-              <li><small>Учусь</small><b id="nowStudy">—</b></li>
-              <li><small>Статус</small><b id="nowStatus">—</b></li>
+              <li><small data-en="Studying">Учусь</small><b id="nowStudy">—</b></li>
+              <li><small data-en="Status">Статус</small><b id="nowStatus">—</b></li>
             </ul>
             <p class="idcard__time"><i class="pulse"></i><span id="nowTime">—</span></p>
           </div>
         </div>
-        <p class="idcard__hint" aria-hidden="true"><span class="idcard__hint-fine">потяни или нажми</span><span class="idcard__hint-touch">нажми, чтобы перевернуть</span></p>
+        <p class="idcard__hint" aria-hidden="true"><span class="idcard__hint-fine" data-en="drag or click">потяни или нажми</span><span class="idcard__hint-touch" data-en="tap to flip">нажми, чтобы перевернуть</span></p>
+      </div>
+
+        <div class="hero__side">
+          <div class="hero-screens" id="heroScreens" role="group" aria-label="Топ-3 работы" data-en-aria="Top 3 works" hidden></div>
+          <section class="hero-facts" id="heroFacts" aria-label="Коротко в цифрах" data-en-aria="In numbers" hidden>
+            <p class="hero-cap" aria-hidden="true" data-en="// in numbers">// в цифрах</p>
+            <ul class="hero-facts__list" id="heroFactsList"></ul>
+          </section>
+        </div>
       </div>
 
       <div class="hero__bottom">
         <div class="hero__intro">
-          <p class="hero__hello">Привет, я программист</p>
-          <p class="hero__sub"><span class="sr-only">Создаю сайты, платформы и информационные системы</span><span aria-hidden="true">Создаю <span class="hero__type"><b id="heroType">сайты</b><i class="hero__type-caret"></i></span></span></p>
+          <p class="hero__hello" data-en="Hi, I’m a software developer">Привет, я программист</p>
+          <p class="hero__sub"><span class="sr-only" data-en="I build websites, platforms and information systems">Создаю сайты, платформы и информационные системы</span><span aria-hidden="true" data-en-html='I build <span class="hero__type"><b id="heroType">websites</b><i class="hero__type-caret"></i></span>'>Создаю <span class="hero__type"><b id="heroType">сайты</b><i class="hero__type-caret"></i></span></span></p>
           <div class="socials" id="heroSocials"></div>
         </div>
         <div class="hero__cta">
-          <a class="btn btn--accent" href="#showcase" data-magnetic>Портфолио <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-          <a class="btn btn--ghost" href="#contact" data-magnetic>Написать мне</a>
+          <a class="btn btn--accent" href="#showcase" data-magnetic data-en-html='Portfolio <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>'>Портфолио <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+          <a class="btn btn--ghost" href="#contact" data-magnetic data-en="Message me">Написать мне</a>
         </div>
       </div>
     </section>
 
     <!-- Бегущие ленты -->
-    <section class="ticker" aria-label="Чем я занимаюсь">
+    <section class="ticker" aria-label="Чем я занимаюсь" data-en-aria="What I do">
       <div class="ticker__band ticker__band--b" aria-hidden="true"><div class="ticker__track" data-dir="-1"></div></div>
       <div class="ticker__band ticker__band--a"><div class="ticker__track" data-dir="1"></div></div>
     </section>
@@ -169,8 +190,8 @@
     <section class="showcase" id="showcase">
       <div class="showcase__sticky">
         <div class="showcase__aside">
-          <p class="eyebrow">Топ-3 работы</p>
-          <h2 class="h2" data-split-words>Лучшие <span class="accent">сайты</span> на&nbsp;экране</h2>
+          <p class="eyebrow" data-en="Top 3 works">Топ-3 работы</p>
+          <h2 class="h2" data-split-words data-en-html='My best <span class="accent">websites</span> on&nbsp;screen'>Лучшие <span class="accent">сайты</span> на&nbsp;экране</h2>
           <ol class="sc-tabs" id="scTabs"></ol>
           <div class="sc-detail" id="scDetail" aria-live="polite"></div>
         </div>
@@ -214,60 +235,30 @@
     <section class="about section" id="about">
       <div class="container about__grid">
         <div class="about__text">
-          <p class="eyebrow reveal">Обо мне</p>
-          <h2 class="h2" data-split-words>Кто такой <span class="accent">Фирас?</span></h2>
-          <p class="lead reveal">Я программист: делаю сайты и веб-платформы от идеи до продакшена. Люблю, когда сложная логика спрятана за простым и живым интерфейсом.</p>
+          <p class="eyebrow reveal" data-en="About me">Обо мне</p>
+          <h2 class="h2" data-split-words data-en-html='Nice to <span class="accent">meet&nbsp;you</span>'>Давайте <span class="accent">познакомимся</span></h2>
+          <p class="lead lead--about reveal" data-en-html='<span class="lead__role">Full-stack &amp; Desktop Developer:</span> I build <mark>web platforms</mark>, <mark>complex multi-page websites</mark> and <mark>high-converting landing pages</mark> from idea to production. I also develop <mark>desktop applications in Python</mark> for working with data and automating processes. I take on <mark>end-to-end projects</mark>, tame complex logic and always hide it behind simple, lively interfaces.'><span class="lead__role">Full-stack &amp; Desktop Developer:</span>
+Создаю <mark>веб-платформы</mark>, <mark>сложные многостраничные сайты</mark> и <mark>конвертящие лендинги</mark> от идеи до продакшена. Также разрабатываю <mark>настольные приложения на Python</mark> для работы с данными и автоматизации процессов. Беру проекты <mark>«под ключ»</mark>, приручаю сложную логику и всегда прячу её за простыми, живыми интерфейсами.</p>
           <div class="facts">
             <article class="fact reveal" style="--d:0">
               <span class="fact__icon"><svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg></span>
-              <div><h3>Учусь в ННГАСУ</h3><p>Бакалавриат «Информационные системы и технологии»</p></div>
+              <div><h3 data-en="Studying at NNGASU">Учусь в ННГАСУ</h3><p data-en-html='Bachelor’s program “Information Systems and Technologies” · <a href="https://nngasu.ru/" target="_blank" rel="noopener">nngasu.ru</a>'>Бакалавриат «Информационные системы и технологии» · <a href="https://nngasu.ru/" target="_blank" rel="noopener">nngasu.ru</a></p></div>
             </article>
             <article class="fact reveal" style="--d:1">
               <span class="fact__icon"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
-              <div><h3>Работаю в Е-Паблиш</h3><p>Московская IT-компания · <a href="https://e-publish.ru/" target="_blank" rel="noopener">e-publish.ru</a></p></div>
+              <div><h3 data-en="Working at E-Publish">Работаю в Е-Паблиш</h3><p data-en-html='Moscow-based IT company · <a href="https://e-publish.ru/" target="_blank" rel="noopener">e-publish.ru</a>'>Московская IT-компания · <a href="https://e-publish.ru/" target="_blank" rel="noopener">e-publish.ru</a></p></div>
             </article>
-            <article class="fact reveal" style="--d:2">
+            <a class="fact fact--link reveal" style="--d:2" href="#achievements" data-cursor="К достижениям" data-en-cursor="To achievements">
               <span class="fact__icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="6"/><path d="m8.5 14-1.5 8 5-3 5 3-1.5-8"/></svg></span>
-              <div><h3>Дипломы и конференции</h3><p>Сертификаты, научные конференции и шоукейсы проектов</p></div>
-            </article>
+              <div><h3 data-en="Diplomas and conferences">Дипломы и конференции</h3><p data-en="Certificates, research conferences and other projects">Сертификаты, научные конференции и другие проекты</p></div>
+              <span class="fact__go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span>
+            </a>
           </div>
         </div>
 
         <div class="code-win reveal" id="codeWin">
           <div class="code-win__bar"><span class="browser__dots"><i></i><i></i><i></i></span><span class="code-win__name">about-me.js</span><span class="code-win__lang">JS</span></div>
           <div class="code-win__body" id="codeBody"></div>
-        </div>
-      </div>
-
-      <div class="container services">
-        <div class="services__head">
-          <div>
-            <p class="eyebrow reveal">Что я делаю</p>
-            <h2 class="h2" data-split-words>Превращаю идеи <span class="accent">в&nbsp;продукт</span></h2>
-          </div>
-          <a class="btn btn--accent btn--sm reveal" href="#works" data-magnetic>Все проекты <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-        </div>
-        <div class="svc-list" id="svcList">
-          <article class="svc reveal">
-            <button class="svc__head" type="button" aria-expanded="false"><span class="svc__num">01.</span><h3>Веб-сайты</h3><span class="svc__arrow"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></button>
-            <div class="svc__body"><div><ul class="svc__tags"><li>Лендинги</li><li>Сайты компаний</li><li>Адаптивная вёрстка</li><li>Анимации</li></ul><p>Сайты, которые быстро грузятся, хорошо выглядят на любом экране и запоминаются.</p></div></div>
-          </article>
-          <article class="svc reveal is-open">
-            <button class="svc__head" type="button" aria-expanded="true"><span class="svc__num">02.</span><h3>Веб-платформы и сервисы</h3><span class="svc__arrow"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></button>
-            <div class="svc__body"><div><ul class="svc__tags"><li>Личные кабинеты</li><li>Каталоги</li><li>Поиск</li><li>Роли и доступы</li></ul><p>Сервисы со сложной логикой — от игровой обучающей платформы до цифровой платформы школьных библиотек.</p></div></div>
-          </article>
-          <article class="svc reveal">
-            <button class="svc__head" type="button" aria-expanded="false"><span class="svc__num">03.</span><h3>Информационные системы</h3><span class="svc__arrow"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></button>
-            <div class="svc__body"><div><ul class="svc__tags"><li>Базы данных</li><li>Учёт и отчёты</li><li>Автоматизация</li></ul><p>Проектирую системы учёта и обработки данных — то, чему учусь в ННГАСУ и что применяю в работе.</p></div></div>
-          </article>
-          <article class="svc reveal">
-            <button class="svc__head" type="button" aria-expanded="false"><span class="svc__num">04.</span><h3>Интерфейсы и UX</h3><span class="svc__arrow"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></button>
-            <div class="svc__body"><div><ul class="svc__tags"><li>Прототипы</li><li>Дизайн-системы</li><li>Микроанимации</li></ul><p>Продумываю путь пользователя, чтобы в интерфейсе не приходилось разбираться.</p></div></div>
-          </article>
-          <article class="svc reveal">
-            <button class="svc__head" type="button" aria-expanded="false"><span class="svc__num">05.</span><h3>Чат-боты и интеграции</h3><span class="svc__arrow"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></button>
-            <div class="svc__body"><div><ul class="svc__tags"><li>Чат-боты</li><li>API</li><li>Внешние сервисы</li></ul><p>Подключаю помощников и внешние сервисы — например, чат-бот Пиксель на GameCode.</p></div></div>
-          </article>
         </div>
       </div>
     </section>
@@ -277,10 +268,10 @@
       <div class="container">
         <div class="section-head">
           <div>
-            <p class="eyebrow reveal">Все работы</p>
-            <h2 class="h2" data-split-words>Проекты <span class="accent">и&nbsp;эксперименты</span></h2>
+            <p class="eyebrow reveal" data-en="All work">Все работы</p>
+            <h2 class="h2" data-split-words data-en-html='Projects <span class="accent">and&nbsp;experiments</span>'>Проекты <span class="accent">и&nbsp;эксперименты</span></h2>
           </div>
-          <div class="filters reveal" id="worksFilters" role="group" aria-label="Фильтр проектов"></div>
+          <div class="filters reveal" id="worksFilters" role="group" aria-label="Фильтр проектов" data-en-aria="Project filter"></div>
         </div>
         <div class="works__grid" id="worksGrid"></div>
       </div>
@@ -290,10 +281,10 @@
     <section class="achievements section" id="achievements">
       <div class="container">
         <div class="section-head section-head--stack">
-          <p class="eyebrow reveal">Достижения</p>
-          <h2 class="h2" data-split-words>Дипломы, <span class="accent">конференции</span> и&nbsp;шоукейсы</h2>
+          <p class="eyebrow reveal" data-en="Achievements">Достижения</p>
+          <h2 class="h2" data-split-words data-en-html='Diplomas, <span class="accent">conferences</span> and&nbsp;more'>Дипломы, <span class="accent">конференции</span> и&nbsp;другое</h2>
         </div>
-        <div class="ach-tabs reveal" id="achTabs" role="group" aria-label="Тип достижения"></div>
+        <div class="ach-tabs reveal" id="achTabs" role="group" aria-label="Тип достижения" data-en-aria="Achievement type"></div>
         <div class="ach-grid" id="achGrid"></div>
       </div>
     </section>
@@ -303,8 +294,8 @@
       <div class="container">
         <div class="contact__card" id="contactCard">
           <div class="contact__spot" aria-hidden="true"></div>
-          <p class="eyebrow eyebrow--dark">Контакты</p>
-          <h2 class="contact__title" data-split-words>Есть идея? <br>Давай сделаем.</h2>
+          <p class="eyebrow eyebrow--dark" data-en="Contact">Контакты</p>
+          <h2 class="contact__title" data-split-words data-en-html="Got an idea? <br>Let’s build it.">Есть идея? <br>Давай сделаем.</h2>
           <div class="contact__links" id="contactLinks"></div>
         </div>
       </div>
@@ -315,63 +306,78 @@
     <div class="footer__giant" aria-hidden="true" id="footerGiant">F/FOLIO</div>
     <div class="container footer__grid">
       <div class="footer__brand">
-        <a href="#top" class="logo" aria-label="F/FOLIO — наверх">
+        <a href="#top" class="logo" aria-label="F/FOLIO — наверх" data-en-aria="F/FOLIO — back to top">
           <span class="logo__mark" aria-hidden="true"><svg viewBox="3.5 7.5 33 27"><path class="lm-body" d="M4 11.5A3.5 3.5 0 0 1 7.5 8h8.2l3.6 3.6h13.2A3.5 3.5 0 0 1 36 15.1v15.4a3.5 3.5 0 0 1-3.5 3.5h-25A3.5 3.5 0 0 1 4 30.5z"/><path class="lm-tab" d="M7.5 8h8.2l3.6 3.6H4A3.5 3.5 0 0 1 7.5 8z"/><path class="lm-f" d="M11 17h9.5v3.6h-5.4v2.6h4.6v3.6h-4.6V31H11z"/><path class="lm-f" d="M22.5 31h3.8l4.4-14h-3.8z"/></svg></span>
           <span class="logo__text">F<b>/</b>FOLIO</span>
         </a>
         <p class="footer__about" id="footerAbout"></p>
-        <p class="footer__status"><i class="pulse"></i><span id="footerStatus">Открыт к новым проектам</span></p>
-        <a class="btn btn--accent btn--sm" id="footerCta" href="#contact"><span class="footer__cta-label">Написать мне</span> <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a>
+        <p class="footer__status"><i class="pulse"></i><span id="footerStatus" data-en="Open to new projects">Открыт к новым проектам</span></p>
+        <a class="btn btn--accent btn--sm" id="footerCta" href="#contact"><span class="footer__cta-label" data-en="Message me">Написать мне</span> <span class="btn__icon"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a>
       </div>
-      <nav class="footer__col" aria-label="Разделы сайта">
-        <h3>Навигация</h3>
+      <nav class="footer__col" aria-label="Разделы сайта" data-en-aria="Site sections">
+        <h3 data-en="Navigation">Навигация</h3>
         <ul>
-          <li><a href="#top">Главная</a></li>
-          <li><a href="#showcase">Топ работ</a></li>
-          <li><a href="#about">Обо мне</a></li>
-          <li><a href="#works">Проекты</a></li>
-          <li><a href="#achievements">Достижения</a></li>
-          <li><a href="#contact">Контакты</a></li>
+          <li><a href="#top" data-en="Home">Главная</a></li>
+          <li><a href="#showcase" data-en="Top works">Топ работ</a></li>
+          <li><a href="#about" data-en="About">Обо мне</a></li>
+          <li><a href="#works" data-en="Projects">Проекты</a></li>
+          <li><a href="#achievements" data-en="Achievements">Достижения</a></li>
+          <li><a href="#contact" data-en="Contact">Контакты</a></li>
         </ul>
       </nav>
       <div class="footer__col">
-        <h3>Проекты</h3>
+        <h3 data-en="Projects">Проекты</h3>
         <ul id="footerProjects"></ul>
       </div>
       <div class="footer__col">
-        <h3>Связаться</h3>
+        <h3 data-en="Get in touch">Связаться</h3>
         <ul id="footerContacts"></ul>
       </div>
     </div>
     <div class="container footer__bottom">
-      <span>© <span id="year">2026</span> F/FOLIO. Все права защищены.</span>
+      <span data-en-html='© <span id="year">2026</span> F/FOLIO. All rights reserved.'>© <span id="year">2026</span> F/FOLIO. Все права защищены.</span>
       <span class="footer__clock"><i class="pulse"></i><span id="clock">—</span></span>
-      <button class="footer__term" type="button" data-open-term>Открыть терминал <kbd>`</kbd></button>
-      <a href="#top" class="footer__top">Наверх <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></a>
+      <button class="footer__term" type="button" data-open-term data-en-html="Open terminal <kbd>`</kbd>">Открыть терминал <kbd>`</kbd></button>
+      <a href="#top" class="footer__top" data-en-html='Back to top <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'>Наверх <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></a>
     </div>
   </footer>
 
-  <!-- Окно проекта / достижения -->
+  <!-- Окно проекта / достижения — в корпусе iPad Pro: рамка, камера, кнопки,
+       на экране строка состояния и полоска «домой» -->
   <dialog class="mm" id="mediaModal" aria-labelledby="mmTitle">
+    <div class="ipad">
+    <i class="ipad__cam" aria-hidden="true"></i>
+    <i class="ipad__key ipad__key--power" aria-hidden="true"></i>
+    <i class="ipad__key ipad__key--vol" aria-hidden="true"></i>
     <div class="mm__inner">
+      <div class="ipad__status" aria-hidden="true">
+        <span class="ipad__clock" id="ipadClock">9:41</span>
+        <span class="ipad__icons">
+          <svg viewBox="0 0 18 12"><path d="M9 11.2 6.6 8.6a3.4 3.4 0 0 1 4.8 0zM4.4 6.4a6.5 6.5 0 0 1 9.2 0l-1.1 1.1a4.9 4.9 0 0 0-7 0zM2.2 4.2a9.6 9.6 0 0 1 13.6 0l-1.1 1.1a8 8 0 0 0-11.4 0z"/></svg>
+          <b>100%</b>
+          <svg viewBox="0 0 27 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="currentColor" opacity=".45"/><rect x="2.2" y="2.2" width="18.6" height="7.6" rx="1.6"/><path d="M24.2 4v4a2 2 0 0 0 0-4z" opacity=".45"/></svg>
+        </span>
+      </div>
+      <i class="ipad__home" aria-hidden="true"></i>
       <div class="mm__gallery">
         <div class="mm__stage" id="mmStage"></div>
-        <button class="mm__nav mm__nav--prev" type="button" aria-label="Предыдущее фото"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
-        <button class="mm__nav mm__nav--next" type="button" aria-label="Следующее фото"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+        <button class="mm__nav mm__nav--prev" type="button" aria-label="Предыдущее фото" data-en-aria="Previous photo"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button class="mm__nav mm__nav--next" type="button" aria-label="Следующее фото" data-en-aria="Next photo"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
         <span class="mm__counter" id="mmCounter"></span>
         <div class="mm__thumbs" id="mmThumbs"></div>
       </div>
       <div class="mm__info" id="mmInfo"></div>
-      <button class="mm__close icon-btn" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <button class="mm__close icon-btn" type="button" aria-label="Закрыть" data-en-aria="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
     </div>
   </dialog>
 
   <!-- Терминал-пасхалка -->
   <div class="terminal" id="terminal" hidden>
-    <div class="terminal__win" role="dialog" aria-label="Терминал" aria-modal="true">
-      <div class="terminal__bar"><span class="browser__dots"><i></i><i></i><i></i></span><span>guest@f-folio: ~</span><button class="terminal__close" type="button" aria-label="Закрыть терминал">esc</button></div>
+    <div class="terminal__win" role="dialog" aria-label="Терминал" data-en-aria="Terminal" aria-modal="true">
+      <div class="terminal__bar"><span class="browser__dots"><i></i><i></i><i></i></span><span>guest@f-folio: ~</span><button class="terminal__close" type="button" aria-label="Закрыть терминал" data-en-aria="Close terminal">esc</button></div>
       <div class="terminal__out" id="termOut"></div>
-      <form class="terminal__line" id="termForm" autocomplete="off"><span class="terminal__prompt">➜ ~</span><input id="termInput" spellcheck="false" aria-label="Команда"></form>
+      <form class="terminal__line" id="termForm" autocomplete="off"><span class="terminal__prompt">➜ ~</span><input id="termInput" spellcheck="false" aria-label="Команда" data-en-aria="Command"></form>
     </div>
   </div>
 

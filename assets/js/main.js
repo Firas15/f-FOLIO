@@ -5,7 +5,57 @@
 (() => {
   "use strict";
 
-  const D = window.PORTFOLIO || {};
+  // ?preview — предпросмотр из админки: данные берутся из черновика в localStorage
+  // (несохранённые правки), а не из data/portfolio.js
+  const PREVIEW_KEY = "fx-preview";
+  const PREVIEW = new URLSearchParams(location.search).has("preview");
+
+  /* ---------- Язык: ru (по умолчанию) / en ----------
+     ?lang=en в адресе, кнопка в шапке или «lang en» в терминале — выбор запоминается.
+     Статичный текст переводится по атрибутам data-en* в index.html, строки скрипта — tr(ru, en),
+     содержимое из админки — полями en у каждой записи (пустое поле — остаётся русский). */
+  const LANG = (() => {
+    const q = new URLSearchParams(location.search).get("lang");
+    if (q === "en" || q === "ru") {
+      try { localStorage.setItem("lang", q); } catch {}
+      return q;
+    }
+    try { return localStorage.getItem("lang") === "en" ? "en" : "ru"; } catch { return "ru"; }
+  })();
+  const EN = LANG === "en";
+  const tr = (ru, en) => (EN ? en : ru);
+  const LOCALE = tr("ru-RU", "en-US");
+
+  // накладывает непустые английские поля поверх русских: строки, списки (теги) и вложенные объекты (учёба, работа)
+  function overlay(base, en) {
+    const out = { ...base };
+    for (const [k, v] of Object.entries(en || {})) {
+      if (Array.isArray(v)) { if (v.length) out[k] = v; }
+      else if (v && typeof v === "object") out[k] = overlay(base[k] || {}, v);
+      else if (String(v ?? "").trim()) out[k] = v;
+    }
+    return out;
+  }
+  const localize = (x) => (EN && x && typeof x === "object" && x.en ? overlay(x, x.en) : x);
+  const localizeAll = (d) => ({
+    ...d,
+    profile: localize(d.profile || {}),
+    contacts: (d.contacts || []).map(localize),
+    projects: (d.projects || []).map(localize),
+    achievementTypes: (d.achievementTypes || []).map(localize),
+    achievements: (d.achievements || []).map(localize),
+    hero: d.hero ? { ...d.hero, facts: (d.hero.facts || []).map(localize) } : d.hero,
+  });
+
+  const D = localizeAll((() => {
+    if (PREVIEW) {
+      try {
+        const draft = JSON.parse(localStorage.getItem(PREVIEW_KEY) || "null");
+        if (draft && typeof draft === "object") return draft;
+      } catch {}
+    }
+    return window.PORTFOLIO || {};
+  })());
   const P = D.profile || {};
   // скрытые записи не показываем; images[0] — обложка (старое поле image тоже понимаем)
   const withImages = (x) => ({ ...x, images: x.images && x.images.length ? x.images : x.image ? [x.image] : [] });
@@ -26,6 +76,14 @@
   const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const isExternal = (url) => /^https?:/i.test(url || "");
+  // форма слова после числа: plural(3, ["проект", "проекта", "проектов"]) → «проекта»;
+  // по-английски форм две: [one, many, many] — «1 project» / «3 projects»
+  const plural = (n, [one, few, many]) => {
+    if (EN) return n === 1 ? one : many;
+    const a = n % 10;
+    const b = n % 100;
+    return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
+  };
 
   const ICONS = {
     telegram: '<svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
@@ -41,6 +99,62 @@
     image: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>',
   };
   const iconFor = (type) => ICONS[type] || ICONS.link;
+
+  /* ---------- Вид работы: сайт / приложение / бот / база данных / модуль ----------
+     От вида зависят заголовок карточки (окно браузера, окно программы, чат,
+     клиент БД, терминал) и автоматическая обложка, если фото нет. */
+  const KINDS = {
+    site: { label: tr("Сайт", "Website"), icon: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>' },
+    app: { label: tr("Приложение", "App"), icon: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5"/></svg>' },
+    bot: { label: tr("Бот", "Bot"), icon: '<svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9 13v1M15 13v1M9.5 17h5"/><circle cx="12" cy="3.5" r=".5"/></svg>' },
+    db: { label: tr("База данных", "Database"), icon: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v13c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-13M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/></svg>' },
+    module: { label: tr("Модуль", "Module"), icon: '<svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg>' },
+  };
+  const kindOf = (p) => (KINDS[p.kind] ? p.kind : "site");
+  const slugOf = (t) => String(t || "project").toLowerCase().replace(/[^a-zа-яё0-9]+/gi, "-").replace(/^-|-$/g, "") || "project";
+
+  // подпись и иконка кнопки — по ссылке: GitHub → «Код на GitHub», Telegram → «Открыть бота»…
+  function linkInfo(p) {
+    const u = String(p.url || "").toLowerCase();
+    if (/github\.com/.test(u)) return { label: tr("Код на GitHub", "Code on GitHub"), icon: ICONS.github };
+    if (/gitlab\.com/.test(u)) return { label: tr("Код на GitLab", "Code on GitLab"), icon: ICONS.arrowUR };
+    if (/(^|\/\/)(t\.me|telegram\.me)\//.test(u)) return { label: kindOf(p) === "bot" ? tr("Открыть бота", "Open the bot") : tr("Открыть в Telegram", "Open in Telegram"), icon: ICONS.telegram };
+    if (/(drive\.google|disk\.yandex|yadi\.sk)/.test(u)) return { label: tr("Открыть материалы", "Open materials"), icon: ICONS.arrowUR };
+    return { label: kindOf(p) === "site" ? tr("Открыть сайт", "Visit website") : tr("Открыть проект", "Open project"), icon: ICONS.arrowUR };
+  }
+  const linkButton = (p) => {
+    if (!p.url) return "";
+    const l = linkInfo(p);
+    return `<a class="btn btn--accent btn--sm" href="${esc(p.url)}" target="_blank" rel="noopener" data-magnetic>${l.label} <span class="btn__icon">${l.icon}</span></a>`;
+  };
+
+  // заголовок карточки работы — «окно» под вид
+  function cardBar(p) {
+    const k = kindOf(p);
+    const where = esc(p.domain || p.url || p.category);
+    if (k === "app") return `<div class="mini-bar mini-bar--app"><span class="mini-bar__title">${KINDS.app.icon}${esc(p.title)}</span><span class="mini-bar__win" aria-hidden="true"><i></i><i></i><i></i></span></div>`;
+    if (k === "bot") return `<div class="mini-bar mini-bar--bot"><span class="mini-bar__avatar">${KINDS.bot.icon}</span><span class="mini-bar__title">${esc(p.title)}<small>${tr("бот · онлайн", "bot · online")}</small></span></div>`;
+    if (k === "db") return `<div class="mini-bar mini-bar--db"><span class="mini-bar__title">${KINDS.db.icon}${esc(slugOf(p.title))}.db</span><span class="mini-bar__tag">SQL</span></div>`;
+    if (k === "module") return `<div class="mini-bar mini-bar--term"><span class="browser__dots"><i></i><i></i><i></i></span><span class="mini-bar__title">~/${esc(slugOf(p.title))} $ ./run</span></div>`;
+    return `<div class="mini-bar"><span class="browser__dots"><i></i><i></i><i></i></span><span>${where}</span></div>`;
+  }
+
+  // обложка, если фото нет: схема под вид работы (страница, окно, чат, таблицы, код) + название
+  function autoCover(p) {
+    const k = kindOf(p);
+    const art = {
+      site: '<i class="ac-nav"></i><i class="ac-hero"></i><span class="ac-cols"><i></i><i></i><i></i></span>',
+      app: '<span class="ac-win"><i class="ac-side"></i><span class="ac-panes"><i></i><i></i><i></i><i></i></span></span>',
+      bot: '<span class="ac-chat"><i class="in"></i><i class="out"></i><i class="in short"></i><i class="out short"></i></span>',
+      db: '<span class="ac-er"><span class="ac-tbl"><b></b><i></i><i></i><i></i></span><span class="ac-tbl"><b></b><i></i><i></i></span><span class="ac-tbl"><b></b><i></i><i></i><i></i></span></span>',
+      module: '<span class="ac-code"><i style="--w:44%"></i><i style="--w:62%;--x:1"></i><i style="--w:38%;--x:2"></i><i style="--w:55%;--x:2"></i><i style="--w:30%;--x:1"></i><i style="--w:20%"></i></span>',
+    }[k];
+    return `
+      <span class="auto-cover auto-cover--${k}">
+        <span class="auto-cover__art" aria-hidden="true">${art}</span>
+        <span class="auto-cover__meta"><span class="auto-cover__icon">${KINDS[k].icon}</span><span><b>${esc(p.title)}</b><small>${esc([KINDS[k].label, p.category].filter(Boolean).join(" · "))}</small></span></span>
+      </span>`;
+  }
 
   const featured = (() => {
     // порядок — как в списке работ (его задаёт админка)
@@ -67,7 +181,7 @@
       document.execCommand("copy");
       ta.remove();
     }
-    toast("Скопировано: " + text);
+    toast(tr("Скопировано: ", "Copied: ") + text);
   }
 
   /* ---------- Разбивка текста ---------- */
@@ -109,20 +223,67 @@
     if (P.photo) $("#heroImg").src = P.photo;
 
     const socials = contacts
-      .map((c) => `<a class="social" href="${esc(c.url)}" ${isExternal(c.url) ? 'target="_blank" rel="noopener"' : ""} aria-label="${esc(c.label)}: ${esc(c.value)}" title="${esc(c.value)}">${iconFor(c.type)}</a>`)
+      .map((c) => `<a class="social" href="${esc(c.url)}" data-type="${esc(c.type)}" ${isExternal(c.url) ? 'target="_blank" rel="noopener"' : ""} aria-label="${esc(c.label)}: ${esc(c.value)}" title="${esc(c.value)}">${iconFor(c.type)}</a>`)
       .join("");
     $("#heroSocials").innerHTML = socials;
     $("#mobileContacts").innerHTML = contacts
       .map((c) => `<a class="chip" href="${esc(c.url)}" ${isExternal(c.url) ? 'target="_blank" rel="noopener"' : ""}>${iconFor(c.type)} ${esc(c.value)}</a>`)
       .join("");
+  }
 
-    $$("[data-count]").forEach((el) => {
-      el.dataset.target = el.dataset.count === "projects" ? projects.length : achievements.length;
-    });
+  /* ---------- Под именем: цифры и мониторы с топ-3 работами ----------
+     Всё задаётся в админке («Профиль → Первый экран»). «Авто»-цифры
+     считаются по видимым работам и достижениям, подпись без текста
+     подбирается сама. На мониторах — те же работы, что на ноутбуке. */
+  const HERO = D.hero || {};
+  const FACT_WORDS = {
+    projects: EN ? ["project", "projects", "projects"] : ["проект", "проекта", "проектов"],
+    live: EN ? ["website live", "websites live", "websites live"] : ["сайт работает", "сайта работают", "сайтов работают"],
+    achievements: EN ? ["achievement", "achievements", "achievements"] : ["достижение", "достижения", "достижений"],
+  };
+
+  function factShown(f) {
+    const n = { projects: projects.length, live: projects.filter((p) => statusOf(p) === "live").length, achievements: achievements.length }[f.kind];
+    if (n == null) return { value: String(f.value || ""), label: f.label || "" };
+    return { value: String(n).padStart(2, "0"), label: f.label || plural(n, FACT_WORDS[f.kind]) };
+  }
+
+  function renderHeroMid() {
+    const facts = (Array.isArray(HERO.facts) ? HERO.facts : []).slice(0, 4).map(factShown).filter((f) => f.value);
+    if (facts.length) {
+      $("#heroFactsList").innerHTML = facts
+        .map((f) => {
+          // число в начале набегает при появлении: «03», «5+»; текст вроде «∞» остаётся как есть
+          const m = /^(\d+)(.*)$/.exec(f.value);
+          const num = m
+            ? `<b class="hero-fact__num" data-to="${+m[1]}" data-pad="${m[1].length}" data-suffix="${esc(m[2])}">${esc(f.value)}</b>`
+            : `<b class="hero-fact__num">${esc(f.value)}</b>`;
+          // текст в скобках не разрываем переносом: «(3 курс)» остаётся одним куском
+          const label = esc(f.label).replace(/\([^)]*\)/g, (m) => m.replace(/ /g, " "));
+          return `<li class="hero-fact">${num}<span class="hero-fact__label">${label}</span></li>`;
+        })
+        .join("");
+      $("#heroFacts").hidden = false;
+    }
+
+    // три монитора: на экране — превью сайта, под ним — точка статуса, название и адрес
+    if (HERO.showWorks !== false && featured.length) {
+      const box = $("#heroScreens");
+      box.innerHTML = featured
+        .map(
+          (p, k) => `
+        <button class="mon${statusOf(p) === "dev" ? " is-dev" : ""}" type="button" data-project="${esc(p.id)}" style="--k:${k}" data-cursor="${tr("Смотреть", "View")}" aria-label="${tr("Открыть работу", "Open project")} ${esc(p.title)}">
+          <span class="mon__frame"><span class="mon__screen">${cover(p) ? `<img src="${esc(cover(p))}" alt="" decoding="async" draggable="false">` : autoCover(p)}</span></span>
+          <span class="mon__cap"><i title="${STATUS[statusOf(p)]}"></i><b>${esc(p.title)}</b><span>${esc(p.domain || p.category)}</span></span>
+        </button>`
+        )
+        .join("");
+      box.hidden = false;
+    }
   }
 
   function renderTicker() {
-    const skills = P.skills && P.skills.length ? P.skills : ["Веб-разработка"];
+    const skills = P.skills && P.skills.length ? P.skills : [tr("Веб-разработка", "Web development")];
     const group = `<div class="ticker__group">${skills.map((s) => `<span class="ticker__item">${esc(s)}${ICONS.star}</span>`).join("")}</div>`;
     $$(".ticker__track").forEach((t) => (t.innerHTML = group.repeat(3)));
   }
@@ -134,9 +295,9 @@
       <div class="contact-row">
         <span class="contact-row__label">${esc(c.label)}</span>
         <span class="contact-row__value">${esc(c.value)}</span>
-        <a class="contact-row__link" href="${esc(c.url)}" ${isExternal(c.url) ? 'target="_blank" rel="noopener"' : ""} aria-label="${esc(c.label)}: ${esc(c.value)}" data-cursor="Написать"></a>
+        <a class="contact-row__link" href="${esc(c.url)}" ${isExternal(c.url) ? 'target="_blank" rel="noopener"' : ""} aria-label="${esc(c.label)}: ${esc(c.value)}" data-cursor="${tr("Написать", "Write")}"></a>
         <span class="contact-row__actions">
-          <button class="contact-row__btn" type="button" data-copy="${esc(c.value)}" aria-label="Скопировать ${esc(c.value)}" title="Скопировать">${ICONS.copy}</button>
+          <button class="contact-row__btn" type="button" data-copy="${esc(c.value)}" aria-label="${tr("Скопировать", "Copy")} ${esc(c.value)}" title="${tr("Скопировать", "Copy")}">${ICONS.copy}</button>
           <span class="contact-row__btn" aria-hidden="true">${ICONS.arrowUR}</span>
         </span>
       </div>`
@@ -148,15 +309,18 @@
   const worksGrid = $("#worksGrid");
   const worksFilters = $("#worksFilters");
   let worksFilter = "all";
-
-  function topTags() {
-    const count = {};
-    projects.forEach((p) => (p.tags || []).forEach((t) => (count[t] = (count[t] || 0) + 1)));
-    return Object.entries(count).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }
+  const STATUS = { live: tr("Уже работает", "Live"), dev: tr("В разработке", "In progress") };
+  const statusOf = (p) => (p.status === "dev" ? "dev" : "live");
+  // карточки «Скоро здесь» тоже считаются «в разработке»
+  const soonSlots = () => Math.max(0, D.upcomingSlots ?? 2);
 
   function renderWorkFilters() {
-    const items = [["all", projects.length, "Все"], ...topTags().map(([t, n]) => [t, n, t])];
+    const count = (s) => projects.filter((p) => statusOf(p) === s).length;
+    const items = [
+      ["all", projects.length + soonSlots(), tr("Все", "All")],
+      ["live", count("live"), STATUS.live],
+      ["dev", count("dev") + soonSlots(), STATUS.dev],
+    ];
     worksFilters.innerHTML = items
       .map(([key, n, label]) => `<button class="filter${key === worksFilter ? " is-active" : ""}" type="button" data-filter="${esc(key)}" aria-pressed="${key === worksFilter}">${esc(label)}<sup>${n}</sup></button>`)
       .join("");
@@ -166,16 +330,20 @@
     const num = String(projects.indexOf(p) + 1).padStart(2, "0");
     return `
       <article class="work-card is-entering" style="--i:${i}" data-tilt>
-        <button class="work-card__link" type="button" data-project="${esc(p.id)}" data-cursor="Смотреть" aria-label="Подробнее о проекте ${esc(p.title)}">
+        <button class="work-card__link" type="button" data-project="${esc(p.id)}" data-cursor="${tr("Смотреть", "View")}" aria-label="${tr("Подробнее о проекте", "More about")} ${esc(p.title)}">
           <div class="work-card__media">
-            <div class="mini-bar"><span class="browser__dots"><i></i><i></i><i></i></span><span>${esc(p.domain || p.url || p.category)}</span></div>
-            <div class="work-card__shot" style="background-image:url('${esc(cover(p))}')" role="img" aria-label="Обложка проекта ${esc(p.title)}"></div>
+            ${cardBar(p)}
+            ${cover(p)
+              ? `<div class="work-card__shot" style="background-image:url('${esc(cover(p))}')" role="img" aria-label="${tr("Обложка проекта", "Project cover:")} ${esc(p.title)}"></div>`
+              : `<div class="work-card__shot work-card__shot--auto" role="img" aria-label="${tr("Обложка проекта", "Project cover:")} ${esc(p.title)}">${autoCover(p)}</div>`}
+            <span class="work-card__status is-${statusOf(p)}"><i class="pulse"></i>${STATUS[statusOf(p)]}</span>
             ${p.images.length > 1 ? `<span class="photo-count">${ICONS.image}${p.images.length}</span>` : ""}
           </div>
           <div class="work-card__body">
             <div class="work-card__top"><span class="work-card__num">${num}</span><span class="work-card__cat">${esc(p.category)}</span></div>
-            <h3>${esc(p.title)}</h3>
-            <p>${esc(p.short)}</p>
+            <h3 class="work-card__title">${esc(p.title)}</h3>
+            <p class="work-card__text">${esc(p.short)}</p>
+            <span class="work-card__more">${tr("Подробнее", "Read more")} ${ICONS.arrowUR}</span>
             <ul class="tags">${(p.tags || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
           </div>
           <span class="work-card__arrow" aria-hidden="true">${ICONS.arrowUR}</span>
@@ -187,22 +355,34 @@
     return `
       <article class="work-card work-card--soon is-entering" style="--i:${i}">
         <div class="soon">
-          <div class="soon__code" aria-hidden="true"><span class="tok-k">const</span> project = <span class="tok-k">new</span> Idea();<br>project.design();<br>project.build();<br>project.test();<br>// скоро в продакшене<span class="caret"></span></div>
+          <div class="soon__code" aria-hidden="true"><span class="tok-k">const</span> project = <span class="tok-k">new</span> Idea();<br>project.design();<br>project.build();<br>project.test();<br>// ${tr("скоро в продакшене", "shipping soon")}<span class="caret"></span></div>
           <div>
-            <span class="soon__badge"><i class="pulse"></i>В разработке</span>
-            <h3 style="margin-top:14px">Новый проект</h3>
-            <p>Скоро здесь появится ещё одна работа.</p>
+            <span class="soon__badge"><i class="pulse"></i>${tr("В разработке", "In progress")}</span>
+            <h3 style="margin-top:14px">${tr("Новый проект", "New project")}</h3>
+            <p>${tr("Скоро здесь появится ещё одна работа.", "Another project is coming here soon.")}</p>
           </div>
         </div>
       </article>`;
   }
 
   function renderWorks() {
-    const list = worksFilter === "all" ? projects : projects.filter((p) => (p.tags || []).includes(worksFilter));
+    const list = worksFilter === "all" ? projects : projects.filter((p) => statusOf(p) === worksFilter);
     let html = list.map(workCard).join("");
-    if (worksFilter === "all") for (let k = 0; k < (D.upcomingSlots ?? 2); k++) html += soonCard(list.length + k);
+    if (worksFilter !== "live") for (let k = 0; k < soonSlots(); k++) html += soonCard(list.length + k);
     worksGrid.innerHTML = html;
     bindTilt(worksGrid);
+    markClamped();
+  }
+
+  // карточки одной высоты: название — до 2 строк, описание — до 3, теги — в одну строку.
+  // Если что-то не влезло, у карточки появляется «Подробнее»: клик открывает окно работы с полным текстом
+  function markClamped() {
+    $$(".work-card", worksGrid).forEach((card) => {
+      const cut = $$(".work-card__title, .work-card__text", card).some((el) => el.scrollHeight > el.clientHeight + 1);
+      card.classList.toggle("is-clamped", cut);
+      const tags = $(".tags", card);
+      card.classList.toggle("is-tags-cut", !!tags && tags.scrollWidth > tags.clientWidth + 1);
+    });
   }
 
   worksFilters.addEventListener("click", (e) => {
@@ -213,19 +393,27 @@
     renderWorks();
   });
 
-  /* ---------- Достижения ---------- */
-  const ACH_TYPES = {
-    diploma: ["Дипломы", "Диплом"],
-    certificate: ["Сертификаты", "Сертификат"],
-    conference: ["Конференции", "Конференция"],
-    showcase: ["Шоукейсы", "Шоукейс"],
-  };
+  /* ---------- Достижения ----------
+     Типы (вкладки) задаются в админке; { id: [«Дипломы», «Диплом»] }.
+     Вкладка типа, в котором нет ни одного видимого достижения, не показывается. */
+  const ACH_TYPES_DEFAULT = [
+    { id: "diploma", plural: tr("Дипломы", "Diplomas"), single: tr("Диплом", "Diploma") },
+    { id: "certificate", plural: tr("Сертификаты", "Certificates"), single: tr("Сертификат", "Certificate") },
+    { id: "conference", plural: tr("Конференции", "Conferences"), single: tr("Конференция", "Conference") },
+    { id: "showcase", plural: tr("Шоукейсы", "Showcases"), single: tr("Шоукейс", "Showcase") },
+  ];
+  const ACH_TYPES = Object.fromEntries(
+    (Array.isArray(D.achievementTypes) && D.achievementTypes.length ? D.achievementTypes : ACH_TYPES_DEFAULT).map((t) => [t.id, [t.plural || t.single, t.single || t.plural]])
+  );
   let achFilter = "all";
 
   function renderAchTabs() {
-    const tabs = [["all", "Все", achievements.length], ...Object.entries(ACH_TYPES).map(([k, v]) => [k, v[0], achievements.filter((a) => a.type === k).length])];
+    const types = Object.entries(ACH_TYPES)
+      .map(([k, v]) => [k, v[0], achievements.filter((a) => a.type === k).length])
+      .filter(([, , n]) => n > 0);
+    const tabs = [["all", tr("Все", "All"), achievements.length], ...types];
     $("#achTabs").innerHTML = tabs
-      .map(([k, label, n]) => `<button class="ach-tab${k === achFilter ? " is-active" : ""}" type="button" data-type="${k}" aria-pressed="${k === achFilter}"><b>${n}</b><span>${label}</span>${n ? "" : "<small>скоро</small>"}</button>`)
+      .map(([k, label, n]) => `<button class="ach-tab${k === achFilter ? " is-active" : ""}" type="button" data-type="${k}" aria-pressed="${k === achFilter}"><b>${n}</b><span>${label}</span>${n ? "" : `<small>${tr("скоро", "soon")}</small>`}</button>`)
       .join("");
   }
 
@@ -236,8 +424,8 @@
         const meta = [a.org, a.date].filter(Boolean).join(" · ");
         return `
         <article class="ach is-entering" style="--i:${i}">
-          <button class="ach__media" type="button" data-ach="${esc(a.id)}" aria-label="Открыть фото: ${esc(a.title)}" data-cursor="Смотреть">
-            <span class="ach__type">${esc((ACH_TYPES[a.type] || ["", "Событие"])[1])}</span>
+          <button class="ach__media" type="button" data-ach="${esc(a.id)}" aria-label="${tr("Открыть фото:", "Open photos:")} ${esc(a.title)}" data-cursor="${tr("Смотреть", "View")}">
+            <span class="ach__type">${esc((ACH_TYPES[a.type] || ["", tr("Событие", "Event")])[1])}</span>
             ${a.images.length > 1 ? `<span class="photo-count">${ICONS.image}${a.images.length}</span>` : ""}
             <img src="${esc(cover(a))}" alt="${esc(a.title)}" loading="lazy">
             <span class="ach__zoom" aria-hidden="true">${ICONS.zoom}</span>
@@ -246,12 +434,12 @@
         </article>`;
       })
       .join("");
-    const what = achFilter === "all" ? "новые достижения" : ACH_TYPES[achFilter][0].toLowerCase();
+    const what = achFilter === "all" || !ACH_TYPES[achFilter] ? tr("новые достижения", "achievements") : ACH_TYPES[achFilter][0].toLowerCase();
     html += `
       <article class="ach ach--soon is-entering" style="--i:${list.length}">
         <span class="ach__plus">${ICONS.plus}</span>
-        <h3>Скоро здесь</h3>
-        <p>Добавлю ${esc(what)} — следите за обновлениями</p>
+        <h3>${tr("Скоро здесь", "Coming soon")}</h3>
+        <p>${tr(`Добавлю ${esc(what)} — следите за обновлениями`, `More ${esc(what)} on the way — stay tuned`)}</p>
       </article>`;
     $("#achGrid").innerHTML = html;
   }
@@ -284,10 +472,15 @@
     mm.el.classList.toggle("is-single", mm.images.length < 2);
     mm.el.classList.toggle("is-photos", kind !== "project");
     mm.stage.innerHTML = mm.images.length
-      ? mm.images.map((src, k) => `<div class="mm__slide" style="--src:url('${esc(src)}')"><img src="${esc(src)}" alt="${esc(item.title)} — фото ${k + 1}" decoding="async"></div>`).join("")
-      : `<div class="mm__slide is-active mm__empty">Фото скоро появятся</div>`;
+      ? mm.images
+          // в --src нужен полный адрес: относительный путь из CSS-переменной браузер считает от style.css (assets/css/) и не находит фото
+          .map((src, k) => `<div class="mm__slide" style="--src:url('${esc(new URL(src, document.baseURI).href)}')"><img src="${esc(src)}" alt="${esc(item.title)} — ${tr("фото", "photo")} ${k + 1}" decoding="async"></div>`)
+          .join("")
+      : kind === "project"
+        ? `<div class="mm__slide is-active mm__slide--auto">${autoCover(item)}</div>`
+        : `<div class="mm__slide is-active mm__empty">${tr("Фото скоро появятся", "Photos coming soon")}</div>`;
     mm.thumbs.innerHTML = mm.images.length > 1
-      ? mm.images.map((src, k) => `<button class="mm__thumb" type="button" data-k="${k}" aria-label="Фото ${k + 1}"><img src="${esc(src)}" alt="" loading="lazy"></button>`).join("")
+      ? mm.images.map((src, k) => `<button class="mm__thumb" type="button" data-k="${k}" aria-label="${tr("Фото", "Photo")} ${k + 1}"><img src="${esc(src)}" alt="" loading="lazy"></button>`).join("")
       : "";
     $$(".mm__slide img", mm.stage).forEach((img) => {
       const fit = () => img.parentElement.classList.toggle("is-long", img.naturalHeight / img.naturalWidth > 1.9);
@@ -301,14 +494,17 @@
         ${item.domain ? `<p class="mm__domain">${esc(item.domain)}</p>` : ""}
         <p class="mm__desc">${esc(item.description || item.short)}</p>
         ${tags ? `<ul class="tags">${tags}</ul>` : ""}
-        ${item.url ? `<a class="btn btn--accent btn--sm" href="${esc(item.url)}" target="_blank" rel="noopener" data-magnetic>Открыть сайт <span class="btn__icon">${ICONS.arrowUR}</span></a>` : ""}`;
+        ${linkButton(item)}`;
     } else {
       const meta = [item.org, item.date].filter(Boolean).join(" · ");
       mm.info.innerHTML = `
-        <p class="sc-detail__cat">${esc((ACH_TYPES[item.type] || ["", "Событие"])[1])}</p>
+        <p class="sc-detail__cat">${esc((ACH_TYPES[item.type] || ["", tr("Событие", "Event")])[1])}</p>
         <h3 id="mmTitle">${esc(item.title)}</h3>
         ${meta ? `<p class="mm__desc">${esc(meta)}</p>` : ""}`;
     }
+    // строка состояния «iPad»: время и дата как в iPadOS — «14:05 пт, 24 окт.»
+    const now = new Date();
+    $("#ipadClock").textContent = `${now.toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" })}  ${now.toLocaleDateString(LOCALE, { weekday: "short", day: "numeric", month: "short" })}`;
     mm.el.showModal();
     showMedia(0);
   }
@@ -365,18 +561,18 @@
     const w = P.work || {};
     const q = (t) => `"${t}"`;
     return [
-      [["c", "// обо мне в двух словах"]],
+      [["c", tr("// обо мне в двух словах", "// about me in a nutshell")]],
       [["k", "const "], ["v", "firas"], ["x", " = {"]],
       [["p", "  name"], ["x", ": "], ["s", q(`${P.firstName} ${P.lastName}`)], ["x", ","]],
       [["p", "  role"], ["x", ": "], ["s", q((P.role || "").toLowerCase())], ["x", ","]],
       [["p", "  study"], ["x", ": "], ["s", q(`${s.place} · ${s.short || s.program}`)], ["x", ","]],
       [["p", "  work"], ["x", ": "], ["s", q(`${w.company} · ${w.city}`)], ["x", ","]],
-      [["p", "  projects"], ["x", ": "], ["n", String(projects.length)], ["x", ", "], ["c", "// и это только начало"]],
+      [["p", "  projects"], ["x", ": "], ["n", String(projects.length)], ["x", ", "], ["c", tr("// и это только начало", "// and this is just the beginning")]],
       [["p", "  coffee"], ["x", ": "], ["n", "Infinity"], ["x", ","]],
       [["p", "  status"], ["x", ": "], ["s", q((P.status || "").toLowerCase())]],
       [["x", "};"]],
       [],
-      [["v", "firas"], ["x", "."], ["p", "build"], ["x", "("], ["s", '"что-то крутое"'], ["x", ");"]],
+      [["v", "firas"], ["x", "."], ["p", "build"], ["x", "("], ["s", tr('"что-то крутое"', '"something awesome"')], ["x", ");"]],
     ];
   };
 
@@ -421,21 +617,6 @@
     step();
   }
 
-  /* ---------- Услуги (аккордеон) ---------- */
-  $("#svcList").addEventListener("click", (e) => {
-    const head = e.target.closest(".svc__head");
-    if (!head) return;
-    const item = head.parentElement;
-    const open = !item.classList.contains("is-open");
-    $$(".svc", $("#svcList")).forEach((s) => {
-      s.classList.remove("is-open");
-      $(".svc__head", s).setAttribute("aria-expanded", "false");
-    });
-    if (open) {
-      item.classList.add("is-open");
-      head.setAttribute("aria-expanded", "true");
-    }
-  });
 
   /* ---------- Ноутбук ---------- */
   const sc = {
@@ -471,7 +652,7 @@
 
   function renderShowcase() {
     sc.view.innerHTML = featured
-      .map((p) => `<div class="slide"><img src="${esc(cover(p))}" alt="Сайт ${esc(p.title)}" decoding="async"></div>`)
+      .map((p) => (cover(p) ? `<div class="slide"><img src="${esc(cover(p))}" alt="${tr("Сайт", "Website")} ${esc(p.title)}" decoding="async"></div>` : `<div class="slide slide--auto">${autoCover(p)}</div>`))
       .join("");
     sc.slides = $$(".slide", sc.view);
     sc.tabs.innerHTML = featured
@@ -481,7 +662,7 @@
       .join("");
     sc.tabBtns = $$(".sc-tab", sc.tabs);
     renderDetail(0);
-    sc.slides.forEach((s) => $("img", s).addEventListener("load", () => sc.active >= 0 && startSlideScroll(sc.active)));
+    sc.slides.forEach((s) => $("img", s)?.addEventListener("load", () => sc.active >= 0 && startSlideScroll(sc.active)));
   }
 
   function startSlideScroll(i) {
@@ -524,7 +705,7 @@
     });
     setTimeout(() => sc.slides[prev] && sc.active !== prev && sc.slides[prev].classList.remove("is-prev"), 950);
     sc.tabBtns.forEach((b, k) => b.classList.toggle("is-active", k === i));
-    typeUrl(featured[i].domain || featured[i].url);
+    typeUrl(featured[i].domain || featured[i].url || featured[i].category || featured[i].title);
     renderDetail(i);
     if (sc.on) startSlideScroll(i);
   }
@@ -538,8 +719,8 @@
       <p>${esc(p.description)}</p>
       <ul class="tags">${(p.tags || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
       <div class="sc-detail__actions">
-        ${p.url ? `<a class="btn btn--accent btn--sm" href="${esc(p.url)}" target="_blank" rel="noopener" data-magnetic>Открыть сайт <span class="btn__icon">${ICONS.arrowUR}</span></a>` : ""}
-        <button class="btn btn--ghost btn--sm" type="button" data-project="${esc(p.id)}" data-magnetic>Подробнее${p.images.length > 1 ? ` · ${p.images.length} фото` : ""}</button>
+        ${linkButton(p)}
+        <button class="btn btn--ghost btn--sm" type="button" data-project="${esc(p.id)}" data-magnetic>${tr("Подробнее", "Details")}${p.images.length > 1 ? ` · ${p.images.length} ${tr("фото", "photos")}` : ""}</button>
       </div>`;
   }
 
@@ -912,6 +1093,77 @@
     if (b) copyText(b.dataset.copy);
   });
 
+  /* ---------- «Облачко» у кнопки почты на первом экране ----------
+     mailto без почтового клиента ничего не открывает, поэтому по клику
+     над кнопкой всплывает сообщение: «печатает…», затем почта для
+     сотрудничества, «Скопировать» и ссылки на новое письмо в Gmail и
+     Яндекс Почте (открываются в браузере, адрес и тема уже вписаны). */
+  const MAIL_SUBJECT = tr("Сотрудничество", "Collaboration");
+  const webmail = (to) => [
+    ["Gmail", `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(MAIL_SUBJECT)}`],
+    [tr("Яндекс Почта", "Yandex Mail"), `https://mail.yandex.ru/compose?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(MAIL_SUBJECT)}`],
+  ];
+  const heroSocials = $("#heroSocials");
+  let mailBubble = null;
+
+  function closeMailBubble() {
+    if (!mailBubble) return;
+    const b = mailBubble;
+    mailBubble = null;
+    $('.social[data-type="email"]', heroSocials)?.classList.remove("is-active");
+    b.classList.remove("is-open");
+    b.classList.add("is-closing");
+    setTimeout(() => b.remove(), 260);
+  }
+
+  function openMailBubble(btn) {
+    const c = contacts.find((x) => x.type === "email");
+    if (!c) return;
+    const b = document.createElement("div");
+    b.className = "mail-bubble";
+    b.setAttribute("role", "dialog");
+    b.setAttribute("aria-label", tr("Почта для сотрудничества", "Email for collaboration"));
+    b.innerHTML = `
+      <span class="mail-bubble__typing" aria-hidden="true"><i></i><i></i><i></i></span>
+      <div class="mail-bubble__msg">
+        <p>${tr("Пишите мне на почту — открыт к сотрудничеству:", "Email me — I’m open to collaboration:")}</p>
+        <b class="mail-bubble__mail">${esc(c.value)}</b>
+        <div class="mail-bubble__actions">
+          <button class="mail-bubble__btn mail-bubble__btn--accent" type="button" data-copy="${esc(c.value)}">${ICONS.copy}${tr("Скопировать", "Copy")}</button>
+          ${webmail(c.value).map(([name, url]) => `<a class="mail-bubble__btn" href="${esc(url)}" target="_blank" rel="noopener">${name}${ICONS.arrowUR}</a>`).join("")}
+        </div>
+      </div>
+      <button class="mail-bubble__close" type="button" aria-label="${tr("Закрыть", "Close")}"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+    heroSocials.append(b);
+    // хвостик — над кнопкой, само облачко не вылезает за края экрана
+    const box = heroSocials.getBoundingClientRect();
+    const r = btn.getBoundingClientRect();
+    const center = r.left + r.width / 2;
+    const left = clamp(center - 34, 12, innerWidth - b.offsetWidth - 12);
+    b.style.left = left - box.left + "px";
+    b.style.setProperty("--tail", center - left + "px");
+    if (!reduced()) {
+      b.classList.add("is-typing");
+      setTimeout(() => b.classList.remove("is-typing"), 700);
+    }
+    requestAnimationFrame(() => b.classList.add("is-open"));
+    btn.classList.add("is-active");
+    mailBubble = b;
+  }
+
+  heroSocials.addEventListener("click", (e) => {
+    const a = e.target.closest('.social[data-type="email"]');
+    if (!a) return;
+    e.preventDefault();
+    mailBubble ? closeMailBubble() : openMailBubble(a);
+  });
+  // закрывается крестиком, кликом мимо и клавишей Esc
+  document.addEventListener("click", (e) => {
+    if (!mailBubble) return;
+    if (e.target.closest(".mail-bubble__close") || !e.target.closest('.mail-bubble, .social[data-type="email"]')) closeMailBubble();
+  });
+  document.addEventListener("keydown", (e) => e.key === "Escape" && closeMailBubble());
+
   /* ---------- Шапка: состояние и активный раздел ---------- */
   const nav = $("#nav");
   const pill = $(".nav__pill");
@@ -944,7 +1196,7 @@
   $$("nav a", menu).forEach((a, i) => a.style.setProperty("--i", i));
   function setMenu(open) {
     burger.setAttribute("aria-expanded", open);
-    burger.setAttribute("aria-label", open ? "Закрыть меню" : "Открыть меню");
+    burger.setAttribute("aria-label", open ? tr("Закрыть меню", "Close menu") : tr("Открыть меню", "Open menu"));
     root.style.overflow = open ? "hidden" : "";
     if (open) {
       menu.hidden = false;
@@ -985,13 +1237,18 @@
   });
 
   /* ---------- Появление при скролле и счётчики ---------- */
-  function countUp(el) {
-    const target = +el.dataset.target || 0;
-    if (reduced()) return (el.textContent = target);
-    const t0 = performance.now();
+  // число набегает от нуля; data-pad — сколько знаков (ведущие нули), data-suffix — хвост вроде «+»
+  function countUp(el, delay = 0) {
+    const target = +el.dataset.to || 0;
+    const pad = +el.dataset.pad || 1;
+    const suffix = el.dataset.suffix || "";
+    const show = (n) => (el.textContent = String(n).padStart(pad, "0") + suffix);
+    if (reduced()) return show(target);
+    show(0);
+    const t0 = performance.now() + delay;
     const f = (now) => {
       const p = clamp((now - t0) / 1400);
-      el.textContent = Math.round(easeOut(p) * target);
+      show(Math.round(easeOut(p) * target));
       if (p < 1) requestAnimationFrame(f);
     };
     requestAnimationFrame(f);
@@ -1004,7 +1261,6 @@
         const el = en.target;
         el.classList.add("in");
         if (el.id === "codeWin") typeCode();
-        if (el.dataset.target !== undefined) countUp(el);
         if (el.id === "footerGiant") lightFooter();
         revealIO.unobserve(el);
       });
@@ -1029,76 +1285,114 @@
     termOut.append(d);
     termOut.scrollTop = termOut.scrollHeight;
   };
-  const SECTIONS = { top: "главная", showcase: "топ-3 работы", about: "обо мне", works: "все проекты", achievements: "достижения", contact: "контакты" };
+  const SECTIONS = EN
+    ? { top: "home", showcase: "top 3 works", about: "about me", works: "all projects", achievements: "achievements", contact: "contact" }
+    : { top: "главная", showcase: "топ-3 работы", about: "обо мне", works: "все проекты", achievements: "достижения", contact: "контакты" };
   const COMMANDS = {
     help: () =>
       print(
-        [
-          "<span class='t-acc'>help</span>          список команд",
-          "<span class='t-acc'>about</span>         коротко обо мне",
-          "<span class='t-acc'>projects</span>      мои работы",
-          "<span class='t-acc'>open</span> &lt;n&gt;      открыть проект номер n",
-          "<span class='t-acc'>achievements</span>  достижения",
-          "<span class='t-acc'>contact</span>       как связаться",
-          "<span class='t-acc'>ls</span> / <span class='t-acc'>cd</span> &lt;раздел&gt;  перейти к разделу",
-          "<span class='t-acc'>theme</span>         сменить тему",
-          "<span class='t-acc'>vhs</span> [on|off]    плёнка и зерно поверх сайта",
-          "<span class='t-acc'>intro</span> vhs|code  выбрать вступление",
-          "<span class='t-acc'>clear</span>         очистить экран",
-          "<span class='t-acc'>exit</span>          закрыть терминал",
-          "<span class='t-cmd'>…и ещё одна секретная команда с sudo</span>",
-        ].join("\n")
+        (EN
+          ? [
+              "<span class='t-acc'>help</span>          list of commands",
+              "<span class='t-acc'>about</span>         a few words about me",
+              "<span class='t-acc'>projects</span>      my work",
+              "<span class='t-acc'>open</span> &lt;n&gt;      open project number n",
+              "<span class='t-acc'>achievements</span>  achievements",
+              "<span class='t-acc'>contact</span>       how to reach me",
+              "<span class='t-acc'>ls</span> / <span class='t-acc'>cd</span> &lt;section&gt;  go to a section",
+              "<span class='t-acc'>theme</span>         toggle the theme",
+              "<span class='t-acc'>vhs</span> [on|off]    film grain over the site",
+              "<span class='t-acc'>intro</span> vhs|code  choose the intro",
+              "<span class='t-acc'>lang</span> ru|en      switch the language",
+              "<span class='t-acc'>clear</span>         clear the screen",
+              "<span class='t-acc'>exit</span>          close the terminal",
+              "<span class='t-cmd'>…and one more secret command with sudo</span>",
+            ]
+          : [
+              "<span class='t-acc'>help</span>          список команд",
+              "<span class='t-acc'>about</span>         коротко обо мне",
+              "<span class='t-acc'>projects</span>      мои работы",
+              "<span class='t-acc'>open</span> &lt;n&gt;      открыть проект номер n",
+              "<span class='t-acc'>achievements</span>  достижения",
+              "<span class='t-acc'>contact</span>       как связаться",
+              "<span class='t-acc'>ls</span> / <span class='t-acc'>cd</span> &lt;раздел&gt;  перейти к разделу",
+              "<span class='t-acc'>theme</span>         сменить тему",
+              "<span class='t-acc'>vhs</span> [on|off]    плёнка и зерно поверх сайта",
+              "<span class='t-acc'>intro</span> vhs|code  выбрать вступление",
+              "<span class='t-acc'>lang</span> ru|en      сменить язык",
+              "<span class='t-acc'>clear</span>         очистить экран",
+              "<span class='t-acc'>exit</span>          закрыть терминал",
+              "<span class='t-cmd'>…и ещё одна секретная команда с sudo</span>",
+            ]
+        ).join("\n")
       ),
     about: () => {
       const s = P.study || {};
       const w = P.work || {};
-      print(`${esc(P.firstName)} ${esc(P.lastName)} — ${esc((P.role || "").toLowerCase())}.\nУчусь: ${esc(s.place)}, ${esc(s.level)} «${esc(s.program)}».\nРаботаю: ${esc(w.company)} (${esc(w.city)}) — <a href="${esc(w.url)}" target="_blank" rel="noopener">${esc((w.url || "").replace(/^https?:\/\/|\/$/g, ""))}</a>`);
+      const site = `<a href="${esc(w.url)}" target="_blank" rel="noopener">${esc((w.url || "").replace(/^https?:\/\/|\/$/g, ""))}</a>`;
+      print(
+        EN
+          ? `${esc(P.firstName)} ${esc(P.lastName)} — ${esc((P.role || "").toLowerCase())}.\nStudying: ${esc(s.place)}, ${esc(s.level)}, “${esc(s.program)}”.\nWorking at: ${esc(w.company)}, ${esc(w.city)} — ${site}`
+          : `${esc(P.firstName)} ${esc(P.lastName)} — ${esc((P.role || "").toLowerCase())}.\nУчусь: ${esc(s.place)}, ${esc(s.level)} «${esc(s.program)}».\nРаботаю: ${esc(w.company)}, ${esc(w.city)} — ${site}`
+      );
     },
-    projects: () => print(projects.map((p, i) => `<span class='t-acc'>[${i + 1}]</span> ${esc(p.title).padEnd(12)} <a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.domain)}</a>`).join("\n") + "\n<span class='t-cmd'>open &lt;n&gt; — открыть</span>"),
+    projects: () => print(projects.map((p, i) => `<span class='t-acc'>[${i + 1}]</span> ${esc(p.title).padEnd(12)} <a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.domain)}</a>`).join("\n") + `\n<span class='t-cmd'>open &lt;n&gt; — ${tr("открыть", "open")}</span>`),
     open: (n) => {
       const p = projects[+n - 1];
-      if (!p) return print("Нет проекта с таким номером. Смотри: projects");
-      print(`<span class='t-ok'>✓</span> открываю ${esc(p.domain)}…`);
+      if (!p) return print(tr("Нет проекта с таким номером. Смотри: projects", "There’s no project with that number. Try: projects"));
+      if (!p.url) {
+        print(tr(`У «${esc(p.title)}» нет ссылки — открываю описание…`, `“${esc(p.title)}” has no link — opening the details…`));
+        closeTerm();
+        return openMedia(p, "project");
+      }
+      print(`<span class='t-ok'>✓</span> ${tr("открываю", "opening")} ${esc(p.domain || p.url)}…`);
       window.open(p.url, "_blank", "noopener");
     },
-    achievements: () => print(achievements.map((a) => `<span class='t-acc'>★</span> ${esc(a.title)}`).join("\n") || "Скоро здесь будет много всего."),
+    achievements: () => print(achievements.map((a) => `<span class='t-acc'>★</span> ${esc(a.title)}`).join("\n") || tr("Скоро здесь будет много всего.", "Plenty coming here soon.")),
     contact: () => print(contacts.map((c) => `${esc(c.label).padEnd(10)} <a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.value)}</a>`).join("\n")),
     ls: () => print(Object.entries(SECTIONS).map(([k, v]) => `<span class='t-acc'>${k}/</span>  <span class='t-cmd'>${v}</span>`).join("\n")),
     cd: (s) => {
-      if (!SECTIONS[s]) return print("cd: нет такого раздела. Смотри: ls");
+      if (!SECTIONS[s]) return print(tr("cd: нет такого раздела. Смотри: ls", "cd: no such section. Try: ls"));
       closeTerm();
       $("#" + s).scrollIntoView({ behavior: reduced() ? "auto" : "smooth" });
     },
     theme: () => {
       const r = $("#themeBtn").getBoundingClientRect();
-      setTheme(root.dataset.theme === "dark" ? "light" : "dark", r.left + r.width / 2, r.top + r.height / 2);
-      print(`<span class='t-ok'>✓</span> тема: ${root.dataset.theme === "dark" ? "светлая" : "тёмная"}`);
+      const next = root.dataset.theme === "dark" ? "light" : "dark";
+      setTheme(next, r.left + r.width / 2, r.top + r.height / 2);
+      print(`<span class='t-ok'>✓</span> ${tr("тема", "theme")}: ${next === "light" ? tr("светлая", "light") : tr("тёмная", "dark")}`);
     },
-    date: () => print(new Date().toLocaleString("ru-RU")),
-    whoami: () => print("гость, которому очень нравится этот сайт 🙂"),
+    date: () => print(new Date().toLocaleString(LOCALE)),
+    whoami: () => print(tr("гость, которому очень нравится этот сайт 🙂", "a guest who really likes this site 🙂")),
     intro: (v) => {
-      if (v !== "vhs" && v !== "code") return print(`сейчас: <span class='t-acc'>${INTRO}</span>. Варианты: intro vhs · intro code`);
+      if (v !== "vhs" && v !== "code") return print(tr(`сейчас: <span class='t-acc'>${INTRO}</span>. Варианты: intro vhs · intro code`, `current: <span class='t-acc'>${INTRO}</span>. Options: intro vhs · intro code`));
       try { localStorage.setItem("intro", v); sessionStorage.removeItem("fx-seen"); } catch {}
-      print(`<span class='t-ok'>✓</span> вступление «${v}», перезагружаю…`);
+      print(`<span class='t-ok'>✓</span> ${tr(`вступление «${v}», перезагружаю…`, `intro “${v}”, reloading…`)}`);
       setTimeout(() => location.reload(), 700);
+    },
+    lang: (v) => {
+      if (v !== "ru" && v !== "en") return print(tr(`сейчас: <span class='t-acc'>${LANG}</span>. Варианты: lang ru · lang en`, `current: <span class='t-acc'>${LANG}</span>. Options: lang ru · lang en`));
+      print(`<span class='t-ok'>✓</span> ${v === "en" ? "switching to English…" : "переключаю на русский…"}`);
+      setTimeout(() => setLang(v), 500);
     },
     vhs: (mode) => {
       const off = mode ? mode === "off" : !film.classList.contains("is-off");
       film.classList.toggle("is-off", off);
       try { localStorage.setItem("vhs", off ? "off" : "on"); } catch {}
-      print(`<span class='t-ok'>✓</span> плёнка ${off ? "выключена" : "включена"}`);
+      print(`<span class='t-ok'>✓</span> ${off ? tr("плёнка выключена", "film effect off") : tr("плёнка включена", "film effect on")}`);
     },
     clear: () => (termOut.innerHTML = ""),
     exit: () => closeTerm(),
     sudo: (...args) => {
       if (args.join(" ") === "hire firas") {
-        print("[sudo] пароль для guest: ********");
+        print(tr("[sudo] пароль для guest: ********", "[sudo] password for guest: ********"));
         setTimeout(() => {
           const tg = contacts.find((c) => c.type === "telegram");
-          print(`<span class='t-ok'>Доступ разрешён ✓</span> Отличный выбор!\nПишите: <a href="${esc(tg ? tg.url : "#contact")}" target="_blank" rel="noopener">${esc(tg ? tg.value : "контакты")}</a>`);
+          const link = `<a href="${esc(tg ? tg.url : "#contact")}" target="_blank" rel="noopener">${esc(tg ? tg.value : tr("контакты", "contacts"))}</a>`;
+          print(tr(`<span class='t-ok'>Доступ разрешён ✓</span> Отличный выбор!\nПишите: ${link}`, `<span class='t-ok'>Access granted ✓</span> Great choice!\nMessage me: ${link}`));
           confetti();
         }, 600);
-      } else print("sudo: попробуй «sudo hire firas»");
+      } else print(tr("sudo: попробуй «sudo hire firas»", "sudo: try “sudo hire firas”"));
     },
   };
 
@@ -1111,7 +1405,7 @@
     const [cmd, ...args] = line.split(/\s+/);
     const fn = COMMANDS[cmd.toLowerCase()];
     if (fn) fn(...args);
-    else print(`command not found: ${esc(cmd)}. Попробуй <span class='t-acc'>help</span>`);
+    else print(`command not found: ${esc(cmd)}. ${tr("Попробуй", "Try")} <span class='t-acc'>help</span>`);
   }
 
   let termOpened = false;
@@ -1120,7 +1414,7 @@
     root.style.overflow = "hidden";
     if (!termOpened) {
       termOpened = true;
-      print("Добро пожаловать в терминал F/FOLIO 👋\nНапиши <span class='t-acc'>help</span>, чтобы увидеть команды.");
+      print(tr("Добро пожаловать в терминал F/FOLIO 👋\nНапиши <span class='t-acc'>help</span>, чтобы увидеть команды.", "Welcome to the F/FOLIO terminal 👋\nType <span class='t-acc'>help</span> to see the commands."));
     }
     setTimeout(() => termInput.focus(), 30);
   }
@@ -1182,7 +1476,7 @@
   /* ---------- Подвал ---------- */
   function renderFooter() {
     const about = $("#footerAbout");
-    if (about) about.textContent = `${[P.role, P.city].filter(Boolean).join(" · ")}. Делаю сайты, веб-платформы и информационные системы — от идеи до продакшена.`;
+    if (about) about.textContent = `${[P.role, P.city].filter(Boolean).join(" · ")}. ${tr("Делаю сайты, веб-платформы и информационные системы — от идеи до продакшена.", "I build websites, web platforms and information systems — from idea to production.")}`;
     const st = $("#footerStatus");
     if (st && P.status) st.textContent = P.status;
     const tg = contacts.find((c) => c.type === "telegram") || contacts[0];
@@ -1190,7 +1484,7 @@
     if (cta && tg) {
       cta.href = tg.url;
       if (isExternal(tg.url)) Object.assign(cta, { target: "_blank", rel: "noopener" });
-      $(".footer__cta-label", cta).textContent = "Написать в " + tg.label;
+      $(".footer__cta-label", cta).textContent = tr("Написать в ", "Message me on ") + tg.label;
     }
     $("#footerProjects").innerHTML =
       projects
@@ -1200,7 +1494,7 @@
             ? `<li><a href="${esc(p.url)}" target="_blank" rel="noopener"><span>${esc(p.title)}<small>${esc(p.domain || p.category)}</small></span>${ICONS.arrowUR}</a></li>`
             : `<li><button type="button" data-project="${esc(p.id)}"><span>${esc(p.title)}<small>${esc(p.category)}</small></span></button></li>`
         )
-        .join("") + `<li><a href="#works" class="footer__more">Все работы →</a></li>`;
+        .join("") + `<li><a href="#works" class="footer__more">${tr("Все работы →", "All work →")}</a></li>`;
     $("#footerContacts").innerHTML = contacts
       .map((c) => `<li><a href="${esc(c.url)}" ${isExternal(c.url) ? 'target="_blank" rel="noopener"' : ""}><i class="footer__ic">${iconFor(c.type)}</i><span>${esc(c.label)}<small>${esc(c.value)}</small></span></a></li>`)
       .join("");
@@ -1208,7 +1502,7 @@
 
   /* ---------- Часы в подвале ---------- */
   function startClock() {
-    const fmt = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: P.timezone || "Europe/Moscow" });
+    const fmt = new Intl.DateTimeFormat(LOCALE, { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: P.timezone || "Europe/Moscow" });
     const el = $("#clock");
     const tick = () => (el.textContent = `${P.city || ""}, ${fmt.format(new Date())}`);
     tick();
@@ -1251,6 +1545,17 @@
   }
 
   function runIntro(done) {
+    // в предпросмотре и сразу после смены языка вступление только мешает — сразу показываем сайт
+    let skip = false;
+    try {
+      skip = sessionStorage.getItem("fx-skip-intro") === "1";
+      sessionStorage.removeItem("fx-skip-intro");
+    } catch {}
+    if (PREVIEW || skip) {
+      $("#tv")?.remove();
+      $("#compile")?.remove();
+      return done();
+    }
     if (INTRO === "code") {
       $("#tv")?.remove();
       return runCodeIntro(done);
@@ -1321,11 +1626,7 @@
       };
       at(full ? 90 : 30, tick);
     };
-    const plural = (n, one, few, many) => {
-      const a = n % 10;
-      const b = n % 100;
-      return `${n} ${a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many}`;
-    };
+    const count = (n, forms) => `${n} ${plural(n, forms)}`;
     const projNames = projects.slice(0, 3).map((p) => p.title).join(", ") + (projects.length > 3 ? "…" : "");
     const progress = (d, dur, then) => {
       const bar = $(".c-bar i", d);
@@ -1348,30 +1649,30 @@
       ? [
           (next) =>
             typeCmd("npm install", () => {
-              line(`<span class="t-dim">добавлено:</span> ${plural(projects.length, "проект", "проекта", "проектов")} · ${plural(achievements.length, "достижение", "достижения", "достижений")} · ${plural(contacts.length, "контакт", "контакта", "контактов")}`);
+              line(`<span class="t-dim">${tr("добавлено:", "added:")}</span> ${count(projects.length, FACT_WORDS.projects)} · ${count(achievements.length, FACT_WORDS.achievements)} · ${count(contacts.length, EN ? ["contact", "contacts", "contacts"] : ["контакт", "контакта", "контактов"])}`);
               at(110, () => {
-                line(`<span class="t-ok">✓</span> зависимости на месте`);
+                line(`<span class="t-ok">✓</span> ${tr("зависимости на месте", "dependencies installed")}`);
                 at(160, next);
               });
             }),
           (next) =>
             typeCmd("npm run build", () => {
-              const d = line(`<span class="t-dim">▸</span> собираю страницу <span class="c-bar"><i></i></span> <span class="c-pct">0%</span>`);
+              const d = line(`<span class="t-dim">▸</span> ${tr("собираю страницу", "building the page")} <span class="c-bar"><i></i></span> <span class="c-pct">0%</span>`);
               progress(d, 420, () => {
-                line(`<span class="t-ok">✓</span> собрано за 0.42 с`);
+                line(`<span class="t-ok">✓</span> ${tr("собрано за 0.42 с", "built in 0.42 s")}`);
                 at(170, next);
               });
             }),
           (next) =>
             typeCmd("npm start", () => {
-              line(`<span class="t-dim">▸</span> поднимаю сервер…`);
+              line(`<span class="t-dim">▸</span> ${tr("поднимаю сервер…", "starting the server…")}`);
               at(170, () => {
-                line(`<span class="t-dim">▸</span> подключаю проекты: ${esc(projNames)}`);
+                line(`<span class="t-dim">▸</span> ${tr("подключаю проекты:", "loading projects:")} ${esc(projNames)}`);
                 at(200, () => {
-                  line(`<span class="t-dim">▸</span> включаю свет…`);
+                  line(`<span class="t-dim">▸</span> ${tr("включаю свет…", "turning on the lights…")}`);
                   at(260, () =>
                     lightUp(() => {
-                      line(`<span class="t-ok">✓ сайт запущен</span> <span class="t-dim">за ${((performance.now() - t0) / 1000).toFixed(1)} с</span>`);
+                      line(`<span class="t-ok">✓ ${tr("сайт запущен", "site is live")}</span> <span class="t-dim">${tr("за", "in")} ${((performance.now() - t0) / 1000).toFixed(1)} ${tr("с", "s")}</span>`);
                       at(380, next);
                     })
                   );
@@ -1382,10 +1683,10 @@
       : [
           (next) =>
             typeCmd("npm start", () => {
-              line(`<span class="t-dim">▸</span> включаю свет…`);
+              line(`<span class="t-dim">▸</span> ${tr("включаю свет…", "turning on the lights…")}`);
               at(200, () =>
                 lightUp(() => {
-                  line(`<span class="t-ok">✓ сайт запущен</span>`);
+                  line(`<span class="t-ok">✓ ${tr("сайт запущен", "site is live")}</span>`);
                   at(280, next);
                 })
               );
@@ -1393,10 +1694,10 @@
         ];
     const run = (i) => (i < steps.length ? steps[i](() => run(i + 1)) : complete());
 
-    // надпись загорается: вспышка → гаснет → горит
+    // надпись загорается по буквам, как неон: каждая пару раз мигает и остаётся гореть
+    const chars = $$(".char", name);
     const on = () => {
-      name.classList.remove("is-flash");
-      glow.classList.remove("is-flash");
+      chars.forEach((c) => c.classList.add("is-on"));
       root.classList.add("is-lit");
       name.classList.add("is-glow");
       glow.classList.add("is-on");
@@ -1404,14 +1705,12 @@
     function lightUp(then) {
       if (lit) return then && then();
       lit = true;
-      name.classList.add("is-flash");
-      glow.classList.add("is-flash");
-      at(80, () => {
-        name.classList.remove("is-flash");
-        glow.classList.remove("is-flash");
-      });
-      at(240, on);
-      at(480, () => then && then());
+      const gap = full ? 95 : 45;
+      chars.forEach((c, i) => at(i * gap + Math.random() * gap * 0.6, () => c.classList.add("is-on")));
+      at(chars.length * gap * 0.35, () => glow.classList.add("is-on"));
+      const end = chars.length * gap + (full ? 560 : 320);
+      at(end, on);
+      at(end + 140, () => then && then());
     }
 
     // терминал сворачивается в «Задача выполнена»
@@ -1419,7 +1718,7 @@
       if (revealed) return;
       term.classList.add("is-out");
       pill.classList.add("is-on");
-      $("#cDoneTime").textContent = `сайт запущен за ${((performance.now() - t0) / 1000).toFixed(1)} с`;
+      $("#cDoneTime").textContent = `${tr("сайт запущен за", "site launched in")} ${((performance.now() - t0) / 1000).toFixed(1)} ${tr("с", "s")}`;
       at(full ? 950 : 650, reveal);
     }
 
@@ -1500,22 +1799,22 @@
 
     const w = P.work || {};
     const s = P.study || {};
-    $("#idName").textContent = [P.firstName, P.lastName].filter(Boolean).join(" ") || "Фирас Хашаб";
+    $("#idName").textContent = [P.firstName, P.lastName].filter(Boolean).join(" ") || tr("Фирас Хашаб", "Firas Khashab");
     $("#idRole").textContent = [P.role, w.company].filter(Boolean).join(" · ");
-    $("#nowWorkLabel").textContent = w.city ? `Работаю · ${w.city}` : "Работаю";
+    $("#nowWorkLabel").textContent = w.city ? `${tr("Работаю", "Working")} · ${w.city}` : tr("Работаю", "Working");
     $("#nowWork").innerHTML = w.url ? `<a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.company)}</a>` : esc(w.company || "—");
     $("#nowStudy").textContent = [s.place, s.short || s.program].filter(Boolean).join(" · ") || "—";
-    $("#nowStatus").textContent = P.status || "Открыт к новым проектам";
+    $("#nowStatus").textContent = P.status || tr("Открыт к новым проектам", "Open to new projects");
     if (P.qr) $("#idQr").src = P.qr;
     const tg = contacts.find((c) => c.type === "telegram") || contacts[0];
     const qrLink = $("#idQrLink");
     if (tg) {
       qrLink.href = tg.url;
-      $("#idQr").alt = `QR-код: ${tg.label} ${tg.value}`;
+      $("#idQr").alt = `${tr("QR-код", "QR code")}: ${tg.label} ${tg.value}`;
       if (isExternal(tg.url)) Object.assign(qrLink, { target: "_blank", rel: "noopener" });
     }
-    const fmt = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: P.timezone || "Europe/Moscow" });
-    const clock = () => ($("#nowTime").textContent = `${P.city || "Местное время"}, ${fmt.format(new Date())}`);
+    const fmt = new Intl.DateTimeFormat(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone: P.timezone || "Europe/Moscow" });
+    const clock = () => ($("#nowTime").textContent = `${P.city || tr("Местное время", "Local time")}, ${fmt.format(new Date())}`);
     clock();
     setInterval(clock, 15000);
 
@@ -1590,7 +1889,7 @@
   // а фон — настоящий код этого сайта, который подсвечивается вокруг курсора
   function initCodeHero() {
     if (INTRO !== "code") return;
-    $(".hero__hello").textContent = "// привет, я программист";
+    $(".hero__hello").textContent = tr("// привет, я программист", "// hi, I’m a software developer");
     $$(".hero__name .word").at(-1)?.insertAdjacentHTML("beforeend", '<i class="hero__caret" aria-hidden="true"></i>');
     const src = [runCodeIntro, initHeroAtmosphere, updateLaptop, renderShowcase, openMedia, updateCursor, typeCode, setTheme]
       .map((f) => f.toString())
@@ -1604,7 +1903,7 @@
   function typedSubtitle() {
     const el = $("#heroType");
     if (!el) return;
-    const words = P.typing && P.typing.length ? P.typing : ["сайты", "веб-платформы", "информационные системы", "интерфейсы", "чат-ботов"];
+    const words = P.typing && P.typing.length ? P.typing : EN ? ["websites", "web platforms", "information systems", "interfaces", "chatbots"] : ["сайты", "веб-платформы", "информационные системы", "интерфейсы", "чат-ботов"];
     el.textContent = words[0];
     if (reduced()) return;
     let wi = 0;
@@ -1862,8 +2161,8 @@
       name.classList.add("is-glitch");
       name.addEventListener("animationend", () => name.classList.remove("is-glitch"), { once: true });
     };
-    $(".hero__title").addEventListener("pointerenter", glitch);
-    const schedule = () => setTimeout(() => { if (visible && !document.hidden) glitch(); schedule(); }, 7000 + Math.random() * 6000);
+    // только сам по себе, раз в 20 секунд: на наведение не реагирует, чтобы не отвлекать
+    const schedule = () => setTimeout(() => { if (visible && !document.hidden) glitch(); schedule(); }, 20000);
     schedule();
   }
 
@@ -1885,9 +2184,44 @@
     requestAnimationFrame(loop);
   }
 
+  /* ---------- Язык страницы ----------
+     Русский текст лежит в разметке, английский — в атрибутах data-en (текст),
+     data-en-html (текст с разметкой), data-en-aria / -title / -alt / -cursor. */
+  function applyStatic() {
+    if (!EN) return;
+    $$("[data-en]").forEach((el) => (el.textContent = el.dataset.en));
+    $$("[data-en-html]").forEach((el) => (el.innerHTML = el.dataset.enHtml));
+    $$("[data-en-aria]").forEach((el) => el.setAttribute("aria-label", el.dataset.enAria));
+    $$("[data-en-title]").forEach((el) => (el.title = el.dataset.enTitle));
+    $$("[data-en-alt]").forEach((el) => (el.alt = el.dataset.enAlt));
+    $$("[data-en-cursor]").forEach((el) => (el.dataset.cursor = el.dataset.enCursor));
+    $("#langBtn")?.setAttribute("lang", "ru");
+    const title = "F/FOLIO · Firas Khashab, software developer";
+    document.title = title;
+    const meta = (sel, v) => document.querySelector(sel)?.setAttribute("content", v);
+    meta('meta[name="description"]', "Portfolio of software developer Firas Khashab: websites, platforms and information systems. GameCode, Lib.Rusobr, Help-Lib.");
+    meta('meta[property="og:title"]', title);
+    meta('meta[property="og:description"]', "Websites, platforms and information systems.");
+  }
+
+  // смена языка — перезагрузка без вступления (его уже видели)
+  function setLang(v) {
+    try {
+      localStorage.setItem("lang", v);
+      sessionStorage.setItem("fx-skip-intro", "1");
+    } catch {}
+    const u = new URL(location.href);
+    u.searchParams.delete("lang");
+    location.replace(u.href);
+  }
+  $("#langBtn")?.addEventListener("click", () => setLang(EN ? "ru" : "en"));
+
   /* ---------- Старт ---------- */
   function init() {
+    applyStatic();
+    root.classList.remove("i18n-wait");
     renderProfile();
+    renderHeroMid();
     renderTicker();
     renderContacts();
     renderFooter();
@@ -1904,7 +2238,7 @@
     const giant = $("#footerGiant");
     giant.innerHTML = [...giant.textContent].map((c) => (c === " " ? " " : `<span>${esc(c)}</span>`)).join("");
 
-    $$(".reveal, [data-split-words], [data-target], #codeWin, #footerGiant").forEach((el) => revealIO.observe(el));
+    $$(".reveal, [data-split-words], #codeWin, #footerGiant").forEach((el) => revealIO.observe(el));
     new IntersectionObserver((en) => (tickerVisible = en[0].isIntersecting)).observe($(".ticker"));
 
     if (reduced()) {
@@ -1923,10 +2257,12 @@
     document.fonts && document.fonts.ready.then(() => {
       measureTickers();
       fitGiant();
+      markClamped();
     });
     addEventListener("resize", () => {
       fitGiant();
       measureTickers();
+      markClamped();
       movePill(activeLink);
       if (sc.on && sc.active >= 0) startSlideScroll(sc.active);
     });
@@ -1935,8 +2271,36 @@
     runIntro(() => {
       root.classList.add("is-ready");
       movePill(activeLink);
+      // цифры под именем набегают вместе с появлением блока
+      $$("#heroFacts .hero-fact__num[data-to]").forEach((el, i) => countUp(el, 450 + i * 130));
     });
+    if (PREVIEW) initPreview();
     requestAnimationFrame(loop);
+  }
+
+  /* ---------- Предпросмотр из админки ----------
+     Плашка внизу; ?open=<id> — сразу открыть окно этой работы/достижения
+     (даже скрытой); админка переписывает черновик — страница обновляется сама. */
+  function initPreview() {
+    const bar = document.createElement("div");
+    bar.className = "preview-bar";
+    bar.innerHTML = `<i class="pulse"></i><span>${tr("Предпросмотр<em> — несохранённые правки из админки, обновляется сам</em>", "Preview<em> — unsaved changes from the admin panel, updates automatically</em>")}</span><button type="button">${tr("Закрыть", "Close")}</button>`;
+    $("button", bar).addEventListener("click", () => (window.close(), bar.remove()));
+    document.body.append(bar);
+
+    const id = new URLSearchParams(location.search).get("open");
+    const found = id && [
+      ...(D.projects || []).map((p) => [withImages(p), "project"]),
+      ...(D.achievements || []).map((a) => [withImages(a), "ach"]),
+    ].find(([x]) => x.id === id);
+    if (found) setTimeout(() => openMedia(found[0], found[1]), 400);
+
+    let reloadTimer;
+    addEventListener("storage", (e) => {
+      if (e.key !== PREVIEW_KEY) return;
+      clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => location.reload(), 300);
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
