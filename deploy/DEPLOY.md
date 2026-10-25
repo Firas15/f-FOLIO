@@ -4,10 +4,10 @@
 (вне git), свой контейнер `portfolio-web`. Общий nginx GameCode только проксирует на него.
 Ничего в `/opt/gamecode` из отслеживаемого не меняем — только добавляем `conf.d/portfolio.conf`.
 
-Везде ниже `ДОМЕН` — твой домен. Секреты (пароли, .env) никуда не пишем.
+Везде ниже `f-folio.ru` — твой домен. Секреты (пароли, .env) никуда не пишем.
 
 ## 0. DNS (у регистратора)
-A-записи `@` и `www` → `89.108.70.28`. Проверка: `getent hosts ДОМЕН www.ДОМЕН`.
+A-записи `@` и `www` → `89.108.70.28`. Проверка: `getent hosts f-folio.ru www.f-folio.ru`.
 
 ## 1. Код и данные
 ```bash
@@ -29,24 +29,24 @@ docker compose -f deploy/docker-compose.yml exec web php -m | grep -i gd     # �
 
 ## 3. nginx, этап 1 (HTTP)
 ```bash
-sed 's/ДОМЕН/example.ru/g' /opt/portfolio/deploy/nginx-portfolio.http.conf > /opt/gamecode/docker/nginx/conf.d/portfolio.conf
+sed 's/f-folio.ru/f-folio.ru/g' /opt/portfolio/deploy/nginx-portfolio.http.conf > /opt/gamecode/docker/nginx/conf.d/portfolio.conf
 cd /opt/gamecode
 docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
 ```
-(`nginx -t` обязателен: ошибка положит и GameCode.) Проверка: `curl -I http://ДОМЕН`.
+(`nginx -t` обязателен: ошибка положит и GameCode.) Проверка: `curl -I http://f-folio.ru`.
 
 ## 4. Сертификат (через работающий certbot-контейнер)
 ```bash
 cd /opt/gamecode
 # проба без расхода лимитов: добавить --staging, потом повторить без него (с --force-renewal)
 docker compose run --rm --entrypoint certbot certbot certonly \
-  --webroot -w /var/www/certbot -d ДОМЕН -d www.ДОМЕН \
+  --webroot -w /var/www/certbot -d f-folio.ru -d www.f-folio.ru \
   --email ПОЧТА --agree-tos --no-eff-email --non-interactive
 ```
 
 ## 5. nginx, этап 2 (HTTPS)
 ```bash
-sed 's/ДОМЕН/example.ru/g' /opt/portfolio/deploy/nginx-portfolio.https.conf > /opt/gamecode/docker/nginx/conf.d/portfolio.conf
+sed 's/f-folio.ru/f-folio.ru/g' /opt/portfolio/deploy/nginx-portfolio.https.conf > /opt/gamecode/docker/nginx/conf.d/portfolio.conf
 cd /opt/gamecode
 docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
 ```
@@ -54,7 +54,7 @@ docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
 `0 4 * * 1 cd /opt/gamecode && docker compose exec -T nginx nginx -s reload`
 
 ## 6. Пароль админки
-Открыть `https://ДОМЕН/admin/` и задать пароль при первом входе (локальный `auth.php` на сервер не переносим).
+Открыть `https://f-folio.ru/admin/` и задать пароль при первом входе (локальный `auth.php` на сервер не переносим).
 
 ## Обновление кода
 ```bash
