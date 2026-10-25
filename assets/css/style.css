@@ -806,7 +806,7 @@ html:not(.js) .tv { display: none; }
 .fact__icon { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); font-size: 20px; }
 .fact h3 { font-family: var(--font-display); font-size: 1.02rem; font-weight: 600; }
 .fact p { color: var(--muted); font-size: .94rem; }
-.fact a { color: var(--accent-text); border-bottom: 1px solid currentColor; }
+.fact a { color: var(--accent-text); border-bottom: 1px solid currentColor; white-space: nowrap; } /* «e-publish.ru» не рвётся на дефисе — переносится целиком */
 /* карточка-ссылка (ведёт к «Достижениям»): справа стрелка, на наведении она в акценте и чуть опускается */
 .fact--link { color: inherit; }
 .fact__go { flex: none; align-self: center; margin-left: auto; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 17px; color: var(--muted); border: 1px solid var(--line-2); transition: background-color var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), transform var(--dur) var(--ease-bounce); }
