@@ -1,0 +1,8 @@
+# Страница, стили и скрипты (и data/portfolio.js, который пишет админка) меняются при каждой выкладке.
+# no-cache — браузер хранит копию, но перед показом сверяется с сервером (ETag): если файл не менялся,
+# ответ короткий «304 Not Modified». Без этого Safari на iPhone подолгу показывает старую версию.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|css|js)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

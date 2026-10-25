@@ -13,6 +13,7 @@ services:
     volumes:
       # в контейнер попадает только сайт: без .git, deploy/, README и прочего; код — только для чтения
       - ../index.html:/var/www/html/index.html:ro
+      - ../.htaccess:/var/www/html/.htaccess:ro   # браузер сверяет HTML/CSS/JS с сервером, а не держит старые
       - ../assets:/var/www/html/assets:ro
       - ../admin:/var/www/html/admin:ro
       # то, что пишет админка, лежит ВНЕ git: git pull ничего не затирает и не конфликтует.
