@@ -1,16 +1,24 @@
-# Портфолио на сервере GameCode: отдельный compose-проект, своя сеть-подключение к nginx GameCode.
+# Портфолио на сервере GameCode: отдельный compose-проект, подключён к сети GameCode,
+# чтобы общий nginx достучался до него по имени контейнера (portfolio-web).
 # Запуск (из /opt/portfolio):  docker compose -f deploy/docker-compose.yml up -d --build
 name: portfolio
 services:
-  web:
+  # Имя сервиса — это DNS-алиас в общей сети gamecode_default. Не «web»: так называется
+  # сервис GameCode, и proxy.inc GameCode ходит на http://web:80 — запросы могли бы уходить сюда.
+  portfolio:
     build: .
     container_name: portfolio-web
     restart: unless-stopped
     expose: ["80"]               # наружу порт не публиковать
     volumes:
-      - ..:/var/www/html:ro      # код из git: после git pull обновляется сразу, пересборка не нужна
-      # то, что пишет админка, лежит ВНЕ git, поэтому git pull ничего не затирает и не конфликтует
-      - /opt/portfolio-data/portfolio.js:/var/www/html/data/portfolio.js
+      # в контейнер попадает только сайт: без .git, deploy/, README и прочего; код — только для чтения
+      - ../index.html:/var/www/html/index.html:ro
+      - ../assets:/var/www/html/assets:ro
+      - ../admin:/var/www/html/admin:ro
+      # то, что пишет админка, лежит ВНЕ git: git pull ничего не затирает и не конфликтует.
+      # Монтируем папки, а не файл: сохранение идёт через временный файл + rename,
+      # а у смонтированного отдельным файлом portfolio.js rename не работает.
+      - /opt/portfolio-data/data:/var/www/html/data
       - /opt/portfolio-data/storage:/var/www/html/admin/storage
       - /opt/portfolio-data/uploads:/var/www/html/assets/img/uploads
     networks: [gamecode]

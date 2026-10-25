@@ -14,7 +14,7 @@ A-записи `@` и `www` → `89.108.70.28`. Проверка: `getent hosts 
 free -h; df -h /                       # сервер общий — смотрим ресурсы
 git clone https://github.com/Firas15/f-FOLIO.git /opt/portfolio
 mkdir -p /opt/portfolio-data/storage /opt/portfolio-data/uploads
-cp /opt/portfolio/data/portfolio.js /opt/portfolio-data/portfolio.js
+mkdir -p /opt/portfolio-data/data && cp /opt/portfolio/data/portfolio.js /opt/portfolio-data/data/portfolio.js
 cp -r /opt/portfolio/assets/img/uploads/. /opt/portfolio-data/uploads/
 cp /opt/portfolio/admin/storage/.htaccess /opt/portfolio/admin/storage/index.html /opt/portfolio-data/storage/
 chown -R 33:33 /opt/portfolio-data     # 33 = www-data внутри контейнера
@@ -24,7 +24,7 @@ chown -R 33:33 /opt/portfolio-data     # 33 = www-data внутри контей
 ```bash
 cd /opt/portfolio
 docker compose -f deploy/docker-compose.yml up -d --build
-docker compose -f deploy/docker-compose.yml exec web php -m | grep -i gd     # должно быть gd
+docker compose -f deploy/docker-compose.yml exec portfolio php -m | grep -i gd     # должно быть gd
 ```
 
 ## 3. nginx, этап 1 (HTTP)
