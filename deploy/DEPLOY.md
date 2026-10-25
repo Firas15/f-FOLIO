@@ -23,8 +23,10 @@ chown -R 33:33 /opt/portfolio-data     # 33 = www-data внутри контей
 ## 2. Контейнер
 ```bash
 cd /opt/portfolio
-docker compose -f deploy/docker-compose.yml up -d --build
-docker compose -f deploy/docker-compose.yml exec portfolio php -m | grep -i gd     # должно быть gd
+cd /opt/portfolio/deploy
+docker compose -p portfolio build --pull        # --pull: обновления PHP приезжают сами
+docker compose -p portfolio up -d --remove-orphans
+docker compose -p portfolio exec portfolio php -m | grep -i gd     # должно быть gd
 ```
 
 ## 3. nginx, этап 1 (HTTP)
@@ -56,9 +58,18 @@ docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
 ## 6. Пароль админки
 Открыть `https://f-folio.ru/admin/` и задать пароль при первом входе (локальный `auth.php` на сервер не переносим).
 
+## Правила (общий сервер)
+- В сети `gamecode_default` не называть сервисы `web`, `db`, `redis`, `nginx`, `certbot`: имена заняты GameCode (сервис портфолио — `portfolio`).
+- Портфолио запускать с `-p portfolio` из `/opt/portfolio/deploy`.
+- Перед перезагрузкой nginx: `cd /opt/gamecode && docker compose exec -T nginx nginx -t`.
+- В контейнер монтируется только сайт (index.html, assets, admin, data); `.git`, `deploy`, README наружу не попадают, а `location`-запреты в nginx-конфиге не удалять.
+- В `/opt/gamecode` не трогать ничего, кроме `conf.d/portfolio.conf`.
+
 ## Обновление кода
 ```bash
 cd /opt/portfolio && git pull          # пересборка не нужна; данные админки не затрагиваются
+# если менялся deploy/Dockerfile или docker-compose.yml:
+cd /opt/portfolio/deploy && docker compose -p portfolio build --pull && docker compose -p portfolio up -d --remove-orphans
 ```
 Контент правим в админке на сервере — это теперь основная копия (`/opt/portfolio-data`).
 Бэкапы админки лежат в `/opt/portfolio-data/storage/backups`.
