@@ -67,9 +67,14 @@ docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
 
 ## Обновление кода
 ```bash
-cd /opt/portfolio && git pull          # пересборка не нужна; данные админки не затрагиваются
-# если менялся deploy/Dockerfile или docker-compose.yml:
-cd /opt/portfolio/deploy && docker compose -p portfolio build --pull && docker compose -p portfolio up -d --remove-orphans
+sh /opt/portfolio/deploy/update.sh
 ```
+Скрипт делает `git pull`, `docker compose up -d` и перезапуск контейнера. Перезапуск обязателен:
+`index.html` и `.htaccess` смонтированы отдельными файлами, а `git pull` подменяет файл новым —
+без перезапуска контейнер продолжает отдавать старую страницу. Данные админки не затрагиваются.
+
+Если менялся `deploy/Dockerfile` — ещё и пересборка:
+`cd /opt/portfolio/deploy && docker compose -p portfolio build --pull && docker compose -p portfolio up -d`.
+
 Контент правим в админке на сервере — это теперь основная копия (`/opt/portfolio-data`).
 Бэкапы админки лежат в `/opt/portfolio-data/storage/backups`.
