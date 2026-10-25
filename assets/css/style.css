@@ -1492,7 +1492,9 @@ html[lang="en"] .hero--badge .idcard { justify-self: start; width: min(var(--w),
 .mon__screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(118deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, 0) 36%); }
 .mon__cap { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 4px; font: .72rem var(--font-mono); color: var(--muted); }
 .mon__cap i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: rgb(var(--glow)); box-shadow: 0 0 8px rgba(var(--glow), .8); }
-.mon__cap b { flex: none; font-weight: 600; color: var(--text); }
+/* длинное название сокращается многоточием, а не наезжает на подпись соседнего монитора */
+.mon__cap b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text); }
+.mon__cap span { flex: 0 1000 auto; }
 .mon__cap span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mon:hover, .mon:focus-visible { translate: 0 -6px; outline: none; }
 .mon:hover .mon__frame, .mon:focus-visible .mon__frame { border-color: rgba(var(--glow), .55); box-shadow: 0 28px 50px -24px rgba(0, 0, 0, .8), 0 0 26px -6px rgba(var(--glow), .55); }
@@ -1539,11 +1541,8 @@ html[lang="en"] .hero--badge .idcard { justify-self: start; width: min(var(--w),
   .hero-fact:nth-child(even) { border-left: 1px solid var(--line-2); }
   /* непарная последняя цифра — на всю ширину, по центру под двумя другими */
   .hero-fact:last-child:nth-child(odd) { grid-column: 1 / -1; }
-  .hero-screens { width: 100%; gap: 10px; }
-  .mon__frame { padding: 3px; border-radius: 9px; }
-  .mon__screen { border-radius: 6px; }
-  .mon__cap { justify-content: center; font-size: .64rem; }
-  .mon__cap span { display: none; }
+  /* на телефоне мониторов с топ-3 нет: те же работы ниже, на ноутбуке */
+  .hero-screens { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .is-ready .hero--badge .idcard { animation: none; }
