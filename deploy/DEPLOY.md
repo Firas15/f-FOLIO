@@ -1,0 +1,64 @@
+# Выкладка на сервер GameCode (89.108.70.28)
+
+Портфолио живёт отдельно: код в `/opt/portfolio` (git), данные админки в `/opt/portfolio-data`
+(вне git), свой контейнер `portfolio-web`. Общий nginx GameCode только проксирует на него.
+Ничего в `/opt/gamecode` из отслеживаемого не меняем — только добавляем `conf.d/portfolio.conf`.
+
+Везде ниже `ДОМЕН` — твой домен. Секреты (пароли, .env) никуда не пишем.
+
+## 0. DNS (у регистратора)
+A-записи `@` и `www` → `89.108.70.28`. Проверка: `getent hosts ДОМЕН www.ДОМЕН`.
+
+## 1. Код и данные
+```bash
+free -h; df -h /                       # сервер общий — смотрим ресурсы
+git clone https://github.com/Firas15/f-FOLIO.git /opt/portfolio
+mkdir -p /opt/portfolio-data/storage /opt/portfolio-data/uploads
+cp /opt/portfolio/data/portfolio.js /opt/portfolio-data/portfolio.js
+cp -r /opt/portfolio/assets/img/uploads/. /opt/portfolio-data/uploads/
+cp /opt/portfolio/admin/storage/.htaccess /opt/portfolio/admin/storage/index.html /opt/portfolio-data/storage/
+chown -R 33:33 /opt/portfolio-data     # 33 = www-data внутри контейнера
+```
+
+## 2. Контейнер
+```bash
+cd /opt/portfolio
+docker compose -f deploy/docker-compose.yml up -d --build
+docker compose -f deploy/docker-compose.yml exec web php -m | grep -i gd     # должно быть gd
+```
+
+## 3. nginx, этап 1 (HTTP)
+```bash
+sed 's/ДОМЕН/example.ru/g' /opt/portfolio/deploy/nginx-portfolio.http.conf > /opt/gamecode/docker/nginx/conf.d/portfolio.conf
+cd /opt/gamecode
+docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
+```
+(`nginx -t` обязателен: ошибка положит и GameCode.) Проверка: `curl -I http://ДОМЕН`.
+
+## 4. Сертификат (через работающий certbot-контейнер)
+```bash
+cd /opt/gamecode
+# проба без расхода лимитов: добавить --staging, потом повторить без него (с --force-renewal)
+docker compose run --rm --entrypoint certbot certbot certonly \
+  --webroot -w /var/www/certbot -d ДОМЕН -d www.ДОМЕН \
+  --email ПОЧТА --agree-tos --no-eff-email --non-interactive
+```
+
+## 5. nginx, этап 2 (HTTPS)
+```bash
+sed 's/ДОМЕН/example.ru/g' /opt/portfolio/deploy/nginx-portfolio.https.conf > /opt/gamecode/docker/nginx/conf.d/portfolio.conf
+cd /opt/gamecode
+docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
+```
+Раз в неделю nginx должен перечитывать продлённые сертификаты (полезно и GameCode):
+`0 4 * * 1 cd /opt/gamecode && docker compose exec -T nginx nginx -s reload`
+
+## 6. Пароль админки
+Открыть `https://ДОМЕН/admin/` и задать пароль при первом входе (локальный `auth.php` на сервер не переносим).
+
+## Обновление кода
+```bash
+cd /opt/portfolio && git pull          # пересборка не нужна; данные админки не затрагиваются
+```
+Контент правим в админке на сервере — это теперь основная копия (`/opt/portfolio-data`).
+Бэкапы админки лежат в `/opt/portfolio-data/storage/backups`.
