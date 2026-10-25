@@ -162,15 +162,28 @@
     return (f.length ? f : projects).slice(0, 3);
   })();
 
-  /* ---------- Тост ---------- */
+  /* ---------- Тост ----------
+     «Скопировано: …» со стрелкой; клик по нему ведёт к карточке контактов */
   const toastEl = $("#toast");
   let toastTimer;
   function toast(msg) {
-    toastEl.textContent = msg;
+    toastEl.innerHTML = `<span>${esc(msg)}</span><i class="toast__go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></i>`;
+    toastEl.title = tr("К контактам", "Go to contacts");
     toastEl.classList.add("is-show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toastEl.classList.remove("is-show"), 2400);
+    toastTimer = setTimeout(() => toastEl.classList.remove("is-show"), 3200);
   }
+  toastEl.addEventListener("click", () => {
+    clearTimeout(toastTimer);
+    toastEl.classList.remove("is-show");
+    closeMailBubble();
+    // к верху карточки под шапкой; пока едем, выше догружаются картинки и страница растёт — после остановки доводим
+    const card = $("#contactCard");
+    if (!card) return;
+    const go = () => scrollTo({ top: card.getBoundingClientRect().top + scrollY - nav.offsetHeight - 16, behavior: reduced() ? "auto" : "smooth" });
+    go();
+    addEventListener("scrollend", go, { once: true });
+  });
   async function copyText(text) {
     try {
       await navigator.clipboard.writeText(text);
@@ -627,13 +640,11 @@
     url: $("#screenUrl"),
     tabs: $("#scTabs"),
     detail: $("#scDetail"),
-    cur: { lid: -89, tilt: -38, yaw: -22, s: 0.84, ty: 40 },
     active: -1,
     on: false,
     bootTimer: 0,
     slides: [],
     anims: [],
-    OPEN_END: 0.24,
   };
 
   function buildKeyboard() {
@@ -665,22 +676,17 @@
     sc.slides.forEach((s) => $("img", s)?.addEventListener("load", () => sc.active >= 0 && startSlideScroll(sc.active)));
   }
 
+  // длинный скриншот сам едет вниз и обратно; полоска под вкладкой — прогресс первого прохода
   function startSlideScroll(i) {
     sc.anims.forEach((a) => a.cancel());
     sc.anims = [];
+    const bar = $(".sc-tab__bar", sc.tabBtns[i]);
     const img = $("img", sc.slides[i]);
-    if (!img || reduced()) return;
-    const d = img.offsetHeight - sc.view.offsetHeight;
-    if (d <= 10) return;
-    sc.anims.push(
-      img.animate([{ transform: "translateY(0)" }, { transform: `translateY(${-d}px)` }], {
-        duration: Math.max(7000, d * 7),
-        delay: 1400,
-        easing: "cubic-bezier(.45,0,.55,1)",
-        direction: "alternate",
-        iterations: Infinity,
-      })
-    );
+    const d = img && !reduced() ? img.offsetHeight - sc.view.offsetHeight : 0;
+    if (d <= 10) return bar?.style.setProperty("--p", 1);
+    const timing = { duration: Math.max(7000, d * 7), delay: 1400, easing: "cubic-bezier(.45,0,.55,1)" };
+    sc.anims.push(img.animate([{ transform: "translateY(0)" }, { transform: `translateY(${-d}px)` }], { ...timing, direction: "alternate", iterations: Infinity }));
+    if (bar) sc.anims.push(bar.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { ...timing, fill: "forwards" }));
   }
 
   let urlTimer;
@@ -704,7 +710,10 @@
       s.classList.toggle("is-prev", k === prev);
     });
     setTimeout(() => sc.slides[prev] && sc.active !== prev && sc.slides[prev].classList.remove("is-prev"), 950);
-    sc.tabBtns.forEach((b, k) => b.classList.toggle("is-active", k === i));
+    sc.tabBtns.forEach((b, k) => {
+      b.classList.toggle("is-active", k === i);
+      b.style.setProperty("--p", 0);
+    });
     typeUrl(featured[i].domain || featured[i].url || featured[i].category || featured[i].title);
     renderDetail(i);
     if (sc.on) startSlideScroll(i);
@@ -736,65 +745,15 @@
       else startSlideScroll(sc.active);
     }, reduced() ? 0 : 1150);
   }
-  function screenOff() {
-    clearTimeout(sc.bootTimer);
-    sc.bootTimer = 0;
-    sc.on = false;
-    sc.screen.classList.remove("is-booting", "is-on");
-    sc.anims.forEach((a) => a.cancel());
-  }
-
-  const scSeg = () => {
-    const start = sc.OPEN_END + 0.04;
-    return { start, len: (1 - start) / Math.max(1, featured.length) };
-  };
-  function scProgress() {
-    const total = sc.sec.offsetHeight - innerHeight;
-    if (total <= 0) return 1;
-    return clamp(-sc.sec.getBoundingClientRect().top / total);
-  }
-
-  function updateLaptop() {
-    if (reduced()) return;
-    const r = sc.sec.getBoundingClientRect();
-    if (r.bottom < -100 || r.top > innerHeight + 100) return;
-    const p = scProgress();
-    const o = easeOut(clamp(p / sc.OPEN_END));
-    const t = { lid: lerp(-89, 11, o), tilt: lerp(-38, -13, o), yaw: lerp(-22, 0, o), s: lerp(0.84, 1, o), ty: lerp(40, 0, o) };
-    let changed = false;
-    for (const k in t) {
-      const v = lerp(sc.cur[k], t[k], 0.12);
-      if (Math.abs(v - sc.cur[k]) > 0.001) changed = true;
-      sc.cur[k] = v;
-    }
-    if (changed) {
-      const s = sc.laptop.style;
-      s.setProperty("--lid", sc.cur.lid.toFixed(2) + "deg");
-      s.setProperty("--tilt", sc.cur.tilt.toFixed(2) + "deg");
-      s.setProperty("--yaw", sc.cur.yaw.toFixed(2) + "deg");
-      s.setProperty("--s", sc.cur.s.toFixed(4));
-      s.setProperty("--ty", sc.cur.ty.toFixed(1) + "px");
-    }
-    // экран включается, когда крышка почти открыта
-    if (sc.cur.lid > 2) screenOn();
-    else if (sc.cur.lid < -45) screenOff();
-
-    const { start, len } = scSeg();
-    const idx = p < start ? 0 : Math.min(featured.length - 1, Math.floor((p - start) / len));
-    const segP = p < start ? 0 : clamp((p - start) / len - idx);
-    if (sc.on) setActive(idx);
-    sc.tabBtns.forEach((b, k) => b.style.setProperty("--p", !sc.on ? 0 : k < idx ? 1 : k === idx ? segP.toFixed(3) : 0));
-  }
+  // ноутбук всегда открыт; экран включается, когда попадает в кадр,
+  // дальше работы переключаются только вкладками (прокрутка страницы на экран не влияет)
+  new IntersectionObserver((en) => en[0].isIntersecting && screenOn(), { threshold: 0.35 }).observe(sc.laptop);
 
   sc.tabs.addEventListener("click", (e) => {
     const b = e.target.closest(".sc-tab");
     if (!b) return;
-    const i = +b.dataset.i;
-    if (reduced()) return setActive(i);
-    const { start, len } = scSeg();
-    const total = sc.sec.offsetHeight - innerHeight;
-    const top = sc.sec.getBoundingClientRect().top + scrollY + total * (start + len * (i + 0.5));
-    scrollTo({ top, behavior: "smooth" });
+    setActive(+b.dataset.i); // пока экран загружается — покажется сразу после загрузки
+    screenOn();
   });
 
   // «печатающие» клавиши, пока экран включён
@@ -936,7 +895,6 @@
   }
   raiseCursor();
   $$("dialog").forEach((dlg) => new MutationObserver(() => raiseCursor()).observe(dlg, { attributes: true, attributeFilter: ["open"] }));
-  try { if (localStorage.getItem("vhs") === "off") film.classList.add("is-off"); } catch {}
 
   if (useCursor) {
     root.classList.add("has-cursor");
@@ -1270,207 +1228,6 @@
 
   function lightFooter() {
     $$("span", $("#footerGiant")).forEach((s, i) => setTimeout(() => s.classList.add("is-lit"), reduced() ? 0 : i * 70));
-  }
-
-  /* ---------- Терминал ---------- */
-  const term = $("#terminal");
-  const termOut = $("#termOut");
-  const termInput = $("#termInput");
-  const hist = [];
-  let histI = 0;
-  const print = (html, cls = "") => {
-    const d = document.createElement("div");
-    if (cls) d.className = cls;
-    d.innerHTML = html;
-    termOut.append(d);
-    termOut.scrollTop = termOut.scrollHeight;
-  };
-  const SECTIONS = EN
-    ? { top: "home", showcase: "top 3 works", about: "about me", works: "all projects", achievements: "achievements", contact: "contact" }
-    : { top: "главная", showcase: "топ-3 работы", about: "обо мне", works: "все проекты", achievements: "достижения", contact: "контакты" };
-  const COMMANDS = {
-    help: () =>
-      print(
-        (EN
-          ? [
-              "<span class='t-acc'>help</span>          list of commands",
-              "<span class='t-acc'>about</span>         a few words about me",
-              "<span class='t-acc'>projects</span>      my work",
-              "<span class='t-acc'>open</span> &lt;n&gt;      open project number n",
-              "<span class='t-acc'>achievements</span>  achievements",
-              "<span class='t-acc'>contact</span>       how to reach me",
-              "<span class='t-acc'>ls</span> / <span class='t-acc'>cd</span> &lt;section&gt;  go to a section",
-              "<span class='t-acc'>theme</span>         toggle the theme",
-              "<span class='t-acc'>vhs</span> [on|off]    film grain over the site",
-              "<span class='t-acc'>intro</span> vhs|code  choose the intro",
-              "<span class='t-acc'>lang</span> ru|en      switch the language",
-              "<span class='t-acc'>clear</span>         clear the screen",
-              "<span class='t-acc'>exit</span>          close the terminal",
-              "<span class='t-cmd'>…and one more secret command with sudo</span>",
-            ]
-          : [
-              "<span class='t-acc'>help</span>          список команд",
-              "<span class='t-acc'>about</span>         коротко обо мне",
-              "<span class='t-acc'>projects</span>      мои работы",
-              "<span class='t-acc'>open</span> &lt;n&gt;      открыть проект номер n",
-              "<span class='t-acc'>achievements</span>  достижения",
-              "<span class='t-acc'>contact</span>       как связаться",
-              "<span class='t-acc'>ls</span> / <span class='t-acc'>cd</span> &lt;раздел&gt;  перейти к разделу",
-              "<span class='t-acc'>theme</span>         сменить тему",
-              "<span class='t-acc'>vhs</span> [on|off]    плёнка и зерно поверх сайта",
-              "<span class='t-acc'>intro</span> vhs|code  выбрать вступление",
-              "<span class='t-acc'>lang</span> ru|en      сменить язык",
-              "<span class='t-acc'>clear</span>         очистить экран",
-              "<span class='t-acc'>exit</span>          закрыть терминал",
-              "<span class='t-cmd'>…и ещё одна секретная команда с sudo</span>",
-            ]
-        ).join("\n")
-      ),
-    about: () => {
-      const s = P.study || {};
-      const w = P.work || {};
-      const site = `<a href="${esc(w.url)}" target="_blank" rel="noopener">${esc((w.url || "").replace(/^https?:\/\/|\/$/g, ""))}</a>`;
-      print(
-        EN
-          ? `${esc(P.firstName)} ${esc(P.lastName)} — ${esc((P.role || "").toLowerCase())}.\nStudying: ${esc(s.place)}, ${esc(s.level)}, “${esc(s.program)}”.\nWorking at: ${esc(w.company)}, ${esc(w.city)} — ${site}`
-          : `${esc(P.firstName)} ${esc(P.lastName)} — ${esc((P.role || "").toLowerCase())}.\nУчусь: ${esc(s.place)}, ${esc(s.level)} «${esc(s.program)}».\nРаботаю: ${esc(w.company)}, ${esc(w.city)} — ${site}`
-      );
-    },
-    projects: () => print(projects.map((p, i) => `<span class='t-acc'>[${i + 1}]</span> ${esc(p.title).padEnd(12)} <a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.domain)}</a>`).join("\n") + `\n<span class='t-cmd'>open &lt;n&gt; — ${tr("открыть", "open")}</span>`),
-    open: (n) => {
-      const p = projects[+n - 1];
-      if (!p) return print(tr("Нет проекта с таким номером. Смотри: projects", "There’s no project with that number. Try: projects"));
-      if (!p.url) {
-        print(tr(`У «${esc(p.title)}» нет ссылки — открываю описание…`, `“${esc(p.title)}” has no link — opening the details…`));
-        closeTerm();
-        return openMedia(p, "project");
-      }
-      print(`<span class='t-ok'>✓</span> ${tr("открываю", "opening")} ${esc(p.domain || p.url)}…`);
-      window.open(p.url, "_blank", "noopener");
-    },
-    achievements: () => print(achievements.map((a) => `<span class='t-acc'>★</span> ${esc(a.title)}`).join("\n") || tr("Скоро здесь будет много всего.", "Plenty coming here soon.")),
-    contact: () => print(contacts.map((c) => `${esc(c.label).padEnd(10)} <a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.value)}</a>`).join("\n")),
-    ls: () => print(Object.entries(SECTIONS).map(([k, v]) => `<span class='t-acc'>${k}/</span>  <span class='t-cmd'>${v}</span>`).join("\n")),
-    cd: (s) => {
-      if (!SECTIONS[s]) return print(tr("cd: нет такого раздела. Смотри: ls", "cd: no such section. Try: ls"));
-      closeTerm();
-      $("#" + s).scrollIntoView({ behavior: reduced() ? "auto" : "smooth" });
-    },
-    theme: () => {
-      const r = $("#themeBtn").getBoundingClientRect();
-      const next = root.dataset.theme === "dark" ? "light" : "dark";
-      setTheme(next, r.left + r.width / 2, r.top + r.height / 2);
-      print(`<span class='t-ok'>✓</span> ${tr("тема", "theme")}: ${next === "light" ? tr("светлая", "light") : tr("тёмная", "dark")}`);
-    },
-    date: () => print(new Date().toLocaleString(LOCALE)),
-    whoami: () => print(tr("гость, которому очень нравится этот сайт 🙂", "a guest who really likes this site 🙂")),
-    intro: (v) => {
-      if (v !== "vhs" && v !== "code") return print(tr(`сейчас: <span class='t-acc'>${INTRO}</span>. Варианты: intro vhs · intro code`, `current: <span class='t-acc'>${INTRO}</span>. Options: intro vhs · intro code`));
-      try { localStorage.setItem("intro", v); sessionStorage.removeItem("fx-seen"); } catch {}
-      print(`<span class='t-ok'>✓</span> ${tr(`вступление «${v}», перезагружаю…`, `intro “${v}”, reloading…`)}`);
-      setTimeout(() => location.reload(), 700);
-    },
-    lang: (v) => {
-      if (v !== "ru" && v !== "en") return print(tr(`сейчас: <span class='t-acc'>${LANG}</span>. Варианты: lang ru · lang en`, `current: <span class='t-acc'>${LANG}</span>. Options: lang ru · lang en`));
-      print(`<span class='t-ok'>✓</span> ${v === "en" ? "switching to English…" : "переключаю на русский…"}`);
-      setTimeout(() => setLang(v), 500);
-    },
-    vhs: (mode) => {
-      const off = mode ? mode === "off" : !film.classList.contains("is-off");
-      film.classList.toggle("is-off", off);
-      try { localStorage.setItem("vhs", off ? "off" : "on"); } catch {}
-      print(`<span class='t-ok'>✓</span> ${off ? tr("плёнка выключена", "film effect off") : tr("плёнка включена", "film effect on")}`);
-    },
-    clear: () => (termOut.innerHTML = ""),
-    exit: () => closeTerm(),
-    sudo: (...args) => {
-      if (args.join(" ") === "hire firas") {
-        print(tr("[sudo] пароль для guest: ********", "[sudo] password for guest: ********"));
-        setTimeout(() => {
-          const tg = contacts.find((c) => c.type === "telegram");
-          const link = `<a href="${esc(tg ? tg.url : "#contact")}" target="_blank" rel="noopener">${esc(tg ? tg.value : tr("контакты", "contacts"))}</a>`;
-          print(tr(`<span class='t-ok'>Доступ разрешён ✓</span> Отличный выбор!\nПишите: ${link}`, `<span class='t-ok'>Access granted ✓</span> Great choice!\nMessage me: ${link}`));
-          confetti();
-        }, 600);
-      } else print(tr("sudo: попробуй «sudo hire firas»", "sudo: try “sudo hire firas”"));
-    },
-  };
-
-  function runCommand(raw) {
-    const line = raw.trim();
-    print(`<span class='t-ok'>➜</span> <span class='t-cmd'>~</span> ${esc(line)}`);
-    if (!line) return;
-    hist.push(line);
-    histI = hist.length;
-    const [cmd, ...args] = line.split(/\s+/);
-    const fn = COMMANDS[cmd.toLowerCase()];
-    if (fn) fn(...args);
-    else print(`command not found: ${esc(cmd)}. ${tr("Попробуй", "Try")} <span class='t-acc'>help</span>`);
-  }
-
-  let termOpened = false;
-  function openTerm() {
-    term.hidden = false;
-    root.style.overflow = "hidden";
-    if (!termOpened) {
-      termOpened = true;
-      print(tr("Добро пожаловать в терминал F/FOLIO 👋\nНапиши <span class='t-acc'>help</span>, чтобы увидеть команды.", "Welcome to the F/FOLIO terminal 👋\nType <span class='t-acc'>help</span> to see the commands."));
-    }
-    setTimeout(() => termInput.focus(), 30);
-  }
-  function closeTerm() {
-    term.hidden = true;
-    root.style.overflow = "";
-  }
-  $("#termBtn").addEventListener("click", openTerm);
-  $$("[data-open-term]").forEach((b) => b.addEventListener("click", openTerm));
-  $(".terminal__close").addEventListener("click", closeTerm);
-  term.addEventListener("click", (e) => e.target === term && closeTerm());
-  $("#termForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    runCommand(termInput.value);
-    termInput.value = "";
-  });
-  termInput.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowUp" && hist.length) {
-      histI = Math.max(0, histI - 1);
-      termInput.value = hist[histI];
-      e.preventDefault();
-    } else if (e.key === "ArrowDown" && hist.length) {
-      histI = Math.min(hist.length, histI + 1);
-      termInput.value = hist[histI] || "";
-      e.preventDefault();
-    }
-  });
-  document.addEventListener("keydown", (e) => {
-    const typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
-    if (e.key === "Escape" && !term.hidden) closeTerm();
-    else if ((e.key === "`" || e.key === "ё" || e.key === "Ё") && !typing && term.hidden) {
-      e.preventDefault();
-      openTerm();
-    }
-  });
-
-  function confetti() {
-    if (reduced()) return;
-    const colors = ["#ff9f1c", "#ffd166", "#f4f1ea", "#3ddc84", "#ff6b6b"];
-    for (let i = 0; i < 90; i++) {
-      const c = document.createElement("i");
-      c.className = "confetti";
-      c.style.background = colors[i % colors.length];
-      c.style.left = innerWidth / 2 + "px";
-      c.style.top = innerHeight / 2 + "px";
-      document.body.append(c);
-      const a = Math.random() * Math.PI * 2;
-      const v = 200 + Math.random() * 420;
-      c.animate(
-        [
-          { transform: "translate(0,0) rotate(0)", opacity: 1 },
-          { transform: `translate(${Math.cos(a) * v}px, ${Math.sin(a) * v + 380}px) rotate(${Math.random() * 720}deg)`, opacity: 0 },
-        ],
-        { duration: 1400 + Math.random() * 900, easing: "cubic-bezier(.2,.8,.3,1)" }
-      ).onfinish = () => c.remove();
-    }
   }
 
   /* ---------- Подвал ---------- */
@@ -1831,13 +1588,13 @@
       }
     });
 
-    // маятник: угол a, скорость v; без касания тянется к лёгкому покачиванию
-    const st = { a: 0, v: 0, drag: false, x0: 0, a0: 0, moved: false, id: null };
+    // маятник: угол a, скорость v; сам слегка покачивается, мышь над бейджем его чуть толкает
+    const st = { a: 0, v: 0 };
     let visible = true;
     new IntersectionObserver((en) => (visible = en[0].isIntersecting)).observe(card);
     const tick = (now) => {
       requestAnimationFrame(tick);
-      if (!visible || st.drag) return;
+      if (!visible) return;
       const idle = reduced() ? 0 : Math.sin(now / 1500) * 1.4;
       st.v += (idle - st.a) * 0.018;
       st.v *= 0.965;
@@ -1846,42 +1603,14 @@
     };
     requestAnimationFrame(tick);
 
-    flip.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || e.target.closest("a")) return;
-      st.drag = true;
-      st.moved = false;
-      st.x0 = e.clientX;
-      st.a0 = st.a;
-      st.id = e.pointerId;
-      flip.setPointerCapture(e.pointerId);
+    // тянуть бейдж нельзя — только нажать, чтобы перевернуть
+    flip.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
+      setFlip(!card.classList.contains("is-flipped"));
     });
+    flip.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && (st.v += 0.5 * (Math.random() < 0.5 ? -1 : 1)));
     flip.addEventListener("pointermove", (e) => {
-      if (!st.drag || e.pointerId !== st.id) {
-        // быстрое движение мыши над бейджем слегка его толкает
-        if (!st.drag && e.pointerType === "mouse") st.v += clamp(e.movementX * 0.015, -0.6, 0.6);
-        return;
-      }
-      const dx = e.clientX - st.x0;
-      if (Math.abs(dx) > 6 && !st.moved) {
-        st.moved = true;
-        card.classList.add("is-dragging");
-      }
-      if (!st.moved) return;
-      const a = clamp(st.a0 + dx * 0.11, -38, 38);
-      st.v = a - st.a;
-      st.a = a;
-      card.style.setProperty("--swing", st.a.toFixed(2) + "deg");
-    });
-    const release = (e) => {
-      if (!st.drag || (e && e.pointerId !== st.id)) return;
-      st.drag = false;
-      card.classList.remove("is-dragging");
-      if (!st.moved) setFlip(!card.classList.contains("is-flipped"));
-    };
-    flip.addEventListener("pointerup", release);
-    flip.addEventListener("pointercancel", () => {
-      st.drag = false;
-      card.classList.remove("is-dragging");
+      if (e.pointerType === "mouse") st.v += clamp(e.movementX * 0.012, -0.4, 0.4);
     });
   }
 
@@ -1891,7 +1620,7 @@
     if (INTRO !== "code") return;
     $(".hero__hello").textContent = tr("// привет, я программист", "// hi, I’m a software developer");
     $$(".hero__name .word").at(-1)?.insertAdjacentHTML("beforeend", '<i class="hero__caret" aria-hidden="true"></i>');
-    const src = [runCodeIntro, initHeroAtmosphere, updateLaptop, renderShowcase, openMedia, updateCursor, typeCode, setTheme]
+    const src = [runCodeIntro, initHeroAtmosphere, startSlideScroll, renderShowcase, openMedia, updateCursor, typeCode, setTheme]
       .map((f) => f.toString())
       .join("\n\n");
     let text = src;
@@ -2180,7 +1909,6 @@
     nav.classList.toggle("is-scrolled", y > 30);
     updateCursor();
     updateTickers();
-    updateLaptop();
     requestAnimationFrame(loop);
   }
 
@@ -2240,16 +1968,6 @@
 
     $$(".reveal, [data-split-words], #codeWin, #footerGiant").forEach((el) => revealIO.observe(el));
     new IntersectionObserver((en) => (tickerVisible = en[0].isIntersecting)).observe($(".ticker"));
-
-    if (reduced()) {
-      // без анимаций ноутбук сразу открыт
-      const s = sc.laptop.style;
-      s.setProperty("--lid", "11deg");
-      s.setProperty("--tilt", "-13deg");
-      s.setProperty("--yaw", "0deg");
-      s.setProperty("--s", "1");
-      screenOn();
-    }
 
     startClock();
     fitGiant();

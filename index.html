@@ -90,9 +90,6 @@
     <div class="nav__actions">
       <!-- переключатель языка: показывает язык, на который переключит -->
       <button class="icon-btn lang-btn" id="langBtn" type="button" aria-label="Switch to English" data-en-aria="Переключить на русский" data-en="RU" lang="en">EN</button>
-      <button class="icon-btn" id="termBtn" type="button" aria-label="Открыть терминал" title="Терминал — клавиша `" data-en-aria="Open terminal" data-en-title="Terminal — press `">
-        <svg viewBox="0 0 24 24"><path d="m5 17 5-5-5-5"/><path d="M12 19h7"/></svg>
-      </button>
       <button class="icon-btn theme-toggle" id="themeBtn" type="button" aria-label="Сменить тему" data-en-aria="Toggle theme">
         <svg viewBox="0 0 24 24" class="theme-toggle__svg">
           <mask id="moonMask"><rect width="24" height="24" fill="#fff"/><circle class="theme-toggle__cut" cx="24" cy="4" r="7" fill="#000"/></mask>
@@ -138,7 +135,7 @@
           <div class="idcard__face idcard__front">
             <div class="idcard__hole"></div>
             <div class="idcard__top"><span class="idcard__brand">F<b>/</b>FOLIO</span><span class="idcard__pill">DEV</span></div>
-            <div class="idcard__photo"><img src="assets/img/photos/firas.webp" alt="Фирас Хашаб" data-en-alt="Firas Khashab" width="910" height="1280" fetchpriority="high" id="heroImg" draggable="false"></div>
+            <div class="idcard__photo"><img src="assets/img/photos/firas.webp" alt="Фирас Хашаб" data-en-alt="Firas Khashab" width="910" height="1280" fetchpriority="high" id="heroImg" draggable="false"><i class="idcard__tap" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 4.1 12 6"/><path d="m5.1 8-2.9-.8"/><path d="m6 12-1.9 2"/><path d="M7.2 2.2 8 5.1"/><path d="M9.04 9.69a.5.5 0 0 1 .65-.65l11 4.5a.5.5 0 0 1-.07.95l-4.35 1.04a1 1 0 0 0-.74.74l-1.04 4.35a.5.5 0 0 1-.95.07z"/></svg></i></div>
             <p class="idcard__name" id="idName">Фирас Хашаб</p>
             <p class="idcard__role" id="idRole">Программист</p>
             <div class="idcard__foot"><span>ID 0001<br>ACCESS: ALL</span><i class="idcard__bars"></i></div>
@@ -155,7 +152,6 @@
             <p class="idcard__time"><i class="pulse"></i><span id="nowTime">—</span></p>
           </div>
         </div>
-        <p class="idcard__hint" aria-hidden="true"><span class="idcard__hint-fine" data-en="drag or click">потяни или нажми</span><span class="idcard__hint-touch" data-en="tap to flip">нажми, чтобы перевернуть</span></p>
       </div>
 
         <div class="hero__side">
@@ -337,7 +333,6 @@
     <div class="container footer__bottom">
       <span data-en-html='© <span id="year">2026</span> F/FOLIO. All rights reserved.'>© <span id="year">2026</span> F/FOLIO. Все права защищены.</span>
       <span class="footer__clock"><i class="pulse"></i><span id="clock">—</span></span>
-      <button class="footer__term" type="button" data-open-term data-en-html="Open terminal <kbd>`</kbd>">Открыть терминал <kbd>`</kbd></button>
       <a href="#top" class="footer__top" data-en-html='Back to top <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'>Наверх <svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></a>
     </div>
   </footer>
@@ -371,15 +366,6 @@
     </div>
     </div>
   </dialog>
-
-  <!-- Терминал-пасхалка -->
-  <div class="terminal" id="terminal" hidden>
-    <div class="terminal__win" role="dialog" aria-label="Терминал" data-en-aria="Terminal" aria-modal="true">
-      <div class="terminal__bar"><span class="browser__dots"><i></i><i></i><i></i></span><span>guest@f-folio: ~</span><button class="terminal__close" type="button" aria-label="Закрыть терминал" data-en-aria="Close terminal">esc</button></div>
-      <div class="terminal__out" id="termOut"></div>
-      <form class="terminal__line" id="termForm" autocomplete="off"><span class="terminal__prompt">➜ ~</span><input id="termInput" spellcheck="false" aria-label="Команда" data-en-aria="Command"></form>
-    </div>
-  </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
